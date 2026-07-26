@@ -1,6 +1,10 @@
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::Path;
+use std::io::{self, Write};
+use tricore::lexer::Lexer;
+use tricore::parser::Parser as TriParser;
+use tricore::interpreter::Interpreter;
 
 #[derive(Parser)]
 #[command(name = "tri")]
@@ -12,6 +16,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Khởi tạo ứng dụng mới
     Tao {
         #[arg(short, long)]
         ung_dung: Option<String>,
@@ -19,6 +24,11 @@ enum Commands {
         thu_vien: Option<String>,
         #[arg(short, long)]
         plugin: Option<String>,
+    },
+    /// Chạy file .tri hoặc khởi động REPL
+    Chay {
+        /// File .tri cần chạy (nếu không chỉ định, sẽ vào REPL)
+        file: Option<String>,
     },
 }
 
@@ -48,12 +58,72 @@ fn tao_ung_dung(ten: &str) {
     println!("✅ Đã tạo ứng dụng '{}' trong thư mục '{}'", ten, dich_dir);
 }
 
-fn tao_thu_vien(ten: &str) {
-    println!("✅ Đã tạo thư viện '{}' (tính năng đang được xây dựng)", ten);
+fn chay_file(filename: &str) {
+    let source = fs::read_to_string(filename).expect("Không thể đọc file");
+    let mut lexer = Lexer::new(&source);
+    let mut tokens = Vec::new();
+    loop {
+        let token = lexer.next_token();
+        let is_eof = token.kind == tricore::token::TokenKind::EOF;
+        tokens.push(token);
+        if is_eof { break; }
+    }
+    let mut parser = TriParser::new(tokens);
+    match parser.parse_chuong_trinh() {
+        Ok(statements) => {
+            let mut interpreter = Interpreter::new();
+            let output = interpreter.run(&statements);
+            for line in output {
+                println!("{}", line);
+            }
+        }
+        Err(e) => eprintln!("Lỗi phân tích cú pháp: {}", e),
+    }
 }
 
-fn tao_plugin(ten: &str) {
-    println!("✅ Đã tạo plugin '{}' (tính năng đang được xây dựng)", ten);
+fn repl() {
+    println!("🌱 TriOS REPL (gõ 'thoát' để dừng)");
+    let mut interpreter = Interpreter::new();
+    let mut input_buffer = String::new();
+    loop {
+        print!("tri> ");
+        io::stdout().flush().unwrap();
+        input_buffer.clear();
+        if io::stdin().read_line(&mut input_buffer).is_err() {
+            break;
+        }
+        let trimmed = input_buffer.trim();
+        if trimmed == "thoát" || trimmed == "exit" || trimmed == "quit" {
+            break;
+        }
+        if trimmed.is_empty() {
+            continue;
+        }
+        let input = if !trimmed.ends_with('.') && !trimmed.ends_with('?') {
+            format!("{}.", trimmed)
+        } else {
+            trimmed.to_string()
+        };
+        let mut lexer = Lexer::new(&input);
+        let mut tokens = Vec::new();
+        loop {
+            let token = lexer.next_token();
+            let is_eof = token.kind == tricore::token::TokenKind::EOF;
+            tokens.push(token);
+            if is_eof { break; }
+        }
+        let mut parser = TriParser::new(tokens);
+        match parser.parse_chuong_trinh() {
+            Ok(statements) => {
+                let output = interpreter.run(&statements);
+                for line in output {
+                    println!("{}", line);
+                }
+            }
+            Err(e) => eprintln!("Lỗi: {}", e),
+        }
+    }
+    println!("Đã thoát REPL.");
 }
 
 fn main() {
@@ -62,12 +132,18 @@ fn main() {
         Commands::Tao { ung_dung, thu_vien, plugin } => {
             if let Some(name) = ung_dung {
                 tao_ung_dung(&name);
-            } else if let Some(name) = thu_vien {
-                tao_thu_vien(&name);
-            } else if let Some(name) = plugin {
-                tao_plugin(&name);
+            } else if let Some(_name) = thu_vien {
+                println!("✅ Đã tạo thư viện '{}' (tính năng đang được xây dựng)", _name);
+            } else if let Some(_name) = plugin {
+                println!("✅ Đã tạo plugin '{}' (tính năng đang được xây dựng)", _name);
             } else {
                 println!("Dùng: tri tao --ung-dung <tên>");
+            }
+        }
+        Commands::Chay { file } => {
+            match file {
+                Some(filename) => chay_file(&filename),
+                None => repl(),
             }
         }
     }
