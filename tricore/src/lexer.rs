@@ -122,6 +122,7 @@ impl Lexer {
                     "với" => Token::new(TokenKind::Voi, line, col),
                     "mỗi" => Token::new(TokenKind::Moi, line, col),
                     "trong" => Token::new(TokenKind::Trong, line, col),
+                    "làm" => Token::new(TokenKind::Lam, line, col),   // <<< Nhận diện "làm"
                     _ => Token::new(TokenKind::Ten(ident), line, col),
                 }
             }

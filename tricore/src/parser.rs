@@ -11,185 +11,162 @@ impl Parser {
         Self { tokens, pos: 0 }
     }
 
-    fn peek(&self) -> &Token {
-        &self.tokens[self.pos]
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.pos)
     }
 
-    fn advance(&mut self) -> &Token {
-        let t = &self.tokens[self.pos];
-        self.pos += 1;
-        t
-    }
-
-    fn check_ten(&self) -> bool {
-        matches!(self.peek().kind, TokenKind::Ten(_))
-    }
-
-    fn check_chuoi(&self) -> bool {
-        matches!(self.peek().kind, TokenKind::Chuoi(_))
-    }
-
-    fn check_so(&self) -> bool {
-        matches!(self.peek().kind, TokenKind::So(_))
-    }
-
-    fn check_kind(&self, kind: &TokenKind) -> bool {
-        std::mem::discriminant(&self.peek().kind) == std::mem::discriminant(kind)
-    }
-
-    fn skip_dau_cham(&mut self) {
-        if self.check_kind(&TokenKind::DauCham) {
-            self.advance();
+    fn advance(&mut self) -> Option<Token> {
+        if self.pos < self.tokens.len() {
+            let t = self.tokens[self.pos].clone();
+            self.pos += 1;
+            Some(t)
+        } else {
+            None
         }
     }
 
-    fn skip_dau_hoi(&mut self) {
-        if self.check_kind(&TokenKind::DauHoi) {
-            self.advance();
+    // Bỏ qua các token dấu câu, nhưng luôn đảm bảo tiến lên ít nhất 1 token
+    fn skip_punctuation(&mut self) {
+        while let Some(tok) = self.peek() {
+            match tok.kind {
+                TokenKind::DauCham | TokenKind::DauHoi | TokenKind::DauPhay => {
+                    self.advance();
+                }
+                _ => break,
+            }
         }
     }
 
+    // ==================== PUBLIC API ====================
     pub fn parse_chuong_trinh(&mut self) -> Result<Vec<Statement>, String> {
         let mut statements = Vec::new();
-        while !self.check_kind(&TokenKind::EOF) {
-            statements.push(self.parse_statement()?);
+        loop {
+            self.skip_punctuation();
+            if self.peek().is_none() {
+                break;
+            }
+            // Nếu token hiện tại là EOF, dừng
+            if let Some(Token { kind: TokenKind::EOF, .. }) = self.peek() {
+                break;
+            }
+            match self.parse_statement() {
+                Ok(stmt) => statements.push(stmt),
+                Err(e) => return Err(e),
+            }
         }
         Ok(statements)
     }
 
+    // ==================== CÂU LỆNH ====================
     fn parse_statement(&mut self) -> Result<Statement, String> {
-        self.skip_dau_cham();
-        match &self.peek().kind {
-            TokenKind::ChuongTrinh => Ok(Statement::ChuongTrinh(self.parse_full_chuong_trinh()?)),
-            TokenKind::Ham => Ok(Statement::Ham(self.parse_ham()?)),
-            TokenKind::Neu => Ok(Statement::Luat(self.parse_luat()?)),
-            TokenKind::Hoi => Ok(Statement::TruyVan(self.parse_truy_van()?)),
-            TokenKind::InRa => Ok(Statement::InRa(self.parse_in_ra()?)),
-            TokenKind::Voi => Ok(Statement::VongLap(self.parse_vong_lap()?)),
-            TokenKind::Ten(_) => Ok(Statement::PhatBieu(self.parse_phat_bieu()?)),
-            _ => Err(format!("Token không mong đợi: {:?}", self.peek())),
+        self.skip_punctuation();
+        let tok = self.peek().cloned();
+        match tok {
+            None => Err("Kết thúc file bất ngờ".to_string()),
+            Some(Token { kind: TokenKind::ChuongTrinh, .. }) => self.parse_full_chuong_trinh().map(Statement::ChuongTrinh),
+            Some(Token { kind: TokenKind::Ham, .. }) => self.parse_ham().map(Statement::Ham),
+            Some(Token { kind: TokenKind::Neu, .. }) => self.parse_luat().map(Statement::Luat),
+            Some(Token { kind: TokenKind::Hoi, .. }) => self.parse_truy_van().map(Statement::TruyVan),
+            Some(Token { kind: TokenKind::InRa, .. }) => self.parse_in_ra().map(Statement::InRa),
+            Some(Token { kind: TokenKind::Voi, .. }) => self.parse_vong_lap().map(Statement::VongLap),
+            Some(Token { kind: TokenKind::Ten(_), .. }) => self.parse_phat_bieu().map(Statement::PhatBieu),
+            Some(t) => Err(format!("Token không mong đợi: {:?}", t)),
         }
     }
 
+    // ==================== CHƯƠNG TRÌNH ====================
     fn parse_full_chuong_trinh(&mut self) -> Result<ChuongTrinh, String> {
         self.advance(); // chương_trình
-        let ten = if let TokenKind::Chuoi(s) = &self.advance().kind {
-            s.clone()
-        } else {
-            return Err("Mong đợi tên chương trình dạng chuỗi".into());
-        };
-        if !self.check_kind(&TokenKind::BatDau) {
-            return Err("Mong đợi 'bắt_đầu'".into());
-        }
-        self.advance(); // bắt_đầu
+        let ten = self.expect_chuoi()?;
+        self.expect_kind(&TokenKind::BatDau)?;
         let mut than = Vec::new();
-        while !self.check_kind(&TokenKind::KetThuc) {
+        loop {
+            self.skip_punctuation();
+            if self.check_kind(&TokenKind::KetThuc) || self.peek().is_none() {
+                break;
+            }
             than.push(self.parse_statement()?);
         }
-        self.advance(); // kết_thúc
+        self.expect_kind(&TokenKind::KetThuc)?;
         Ok(ChuongTrinh { ten, than })
     }
 
+    // ==================== PHÁT BIỂU ====================
     fn parse_phat_bieu(&mut self) -> Result<PhatBieu, String> {
         let chu_ngu = self.expect_ten()?;
-        let dong_tu = if self.check_ten() {
-            Some(self.expect_ten()?)
-        } else if self.check_kind(&TokenKind::La) {
+        let dong_tu = if self.check_kind(&TokenKind::La) {
             self.advance();
             Some("là".to_string())
+        } else if self.check_ten() {
+            Some(self.expect_ten()?)
         } else {
             None
         };
         let tan_ngu = if self.check_ten() || self.check_chuoi() || self.check_so() {
-            Some(match &self.advance().kind {
-                TokenKind::Ten(s) => s.clone(),
-                TokenKind::Chuoi(s) => s.clone(),
-                TokenKind::So(n) => n.to_string(),
-                _ => unreachable!(),
-            })
+            Some(self.advance_value()?)
+        } else if self.check_kind(&TokenKind::DauHoi) {
+            self.advance();
+            Some("?".to_string())
         } else {
-            None
+            Some("đúng".to_string())
         };
-        self.skip_dau_cham();
+        self.skip_punctuation();
         Ok(PhatBieu { chu_ngu, dong_tu, tan_ngu })
     }
 
+    // ==================== LUẬT ====================
     fn parse_luat(&mut self) -> Result<Luat, String> {
         self.advance(); // nếu
         let mut dieu_kien = Vec::new();
-        while !self.check_kind(&TokenKind::Thi) {
-            if self.check_kind(&TokenKind::Va) { self.advance(); }
+        loop {
+            self.skip_punctuation();
+            if self.check_kind(&TokenKind::Thi) || self.peek().is_none() {
+                break;
+            }
+            if self.check_kind(&TokenKind::Va) {
+                self.advance();
+            }
             let s = self.expect_ten()?;
-            let p = self.expect_ten()?;
-            let o = self.expect_ten()?;
+            let p = self.parse_predicate()?;
+            let o = self.parse_optional_object().unwrap_or_else(|| "đúng".to_string());
             dieu_kien.push((s, p, o));
         }
-        self.advance(); // thì
+        self.expect_kind(&TokenKind::Thi)?;
         let s = self.expect_ten()?;
-        let p = self.expect_ten()?;
-        let o = self.expect_ten()?;
+        let p = self.parse_predicate()?;
+        let o = self.parse_optional_object().unwrap_or_else(|| "đúng".to_string());
         let ket_luan = (s, p, o);
-        self.skip_dau_cham();
+        self.skip_punctuation();
         Ok(Luat { dieu_kien, ket_luan })
     }
 
+    // ==================== TRUY VẤN ====================
     fn parse_truy_van(&mut self) -> Result<TruyVan, String> {
         self.advance(); // hỏi
+        self.skip_punctuation();
         let s = self.expect_ten()?;
-        let p = if self.check_kind(&TokenKind::La) {
-            self.advance();
-            "là".to_string()
-        } else {
-            self.expect_ten()?
-        };
+        let p = self.parse_predicate()?;
         let o = if self.check_ten() {
             let ten = self.expect_ten()?;
-            if ten == "gì" {
-                "?".to_string()
-            } else {
-                ten
-            }
-        } else if self.check_chuoi() {
-            if let TokenKind::Chuoi(c) = &self.advance().kind {
-                c.clone()
-            } else {
-                unreachable!()
-            }
-        } else if self.check_kind(&TokenKind::DauHoi) {
-            "?".to_string()
+            if ten == "gì" { "?".to_string() } else { ten }
+        } else if self.check_chuoi() || self.check_so() {
+            self.advance_value()?
         } else {
-            return Err(format!("Mong đợi tân ngữ hoặc 'gì' nhưng gặp {:?}", self.peek()));
+            "?".to_string()
         };
-        let muc_tieu = (s, p, o);
-        let mut rang_buoc = None;
-        if self.check_kind(&TokenKind::Khi) {
-            self.advance();
-            let mut constraints = Vec::new();
-            while !self.check_kind(&TokenKind::DauHoi) && !self.check_kind(&TokenKind::EOF) {
-                let cs = self.expect_ten()?;
-                let cp = self.expect_ten()?;
-                let co = self.expect_ten()?;
-                constraints.push((cs, cp, co));
-                self.skip_dau_cham();
-            }
-            rang_buoc = Some(constraints);
-        }
-        self.skip_dau_hoi();
-        self.skip_dau_cham();
-        Ok(TruyVan { muc_tieu, rang_buoc })
+        self.skip_punctuation();
+        Ok(TruyVan { muc_tieu: (s, p, o), rang_buoc: None })
     }
 
+    // ==================== IN RA ====================
     fn parse_in_ra(&mut self) -> Result<InRa, String> {
         self.advance(); // in_ra
-        let bieu_thuc = match &self.advance().kind {
-            TokenKind::Chuoi(s) => s.clone(),
-            TokenKind::Ten(s) => s.clone(),
-            _ => return Err("Mong đợi chuỗi hoặc biến".into()),
-        };
-        self.skip_dau_cham();
-        Ok(InRa { bieu_thuc })
+        let val = self.advance_value()?;
+        self.skip_punctuation();
+        Ok(InRa { bieu_thuc: val })
     }
 
+    // ==================== VÒNG LẶP ====================
     fn parse_vong_lap(&mut self) -> Result<VongLap, String> {
         self.advance(); // với
         self.advance(); // mỗi
@@ -198,49 +175,121 @@ impl Parser {
         let mut danh_sach = Vec::new();
         if self.check_kind(&TokenKind::DauNgoacVuongMo) {
             self.advance();
-            while !self.check_kind(&TokenKind::DauNgoacVuongDong) {
+            while !self.check_kind(&TokenKind::DauNgoacVuongDong) && self.peek().is_some() {
                 danh_sach.push(self.expect_ten()?);
                 if self.check_kind(&TokenKind::DauPhay) { self.advance(); }
             }
-            self.advance();
+            self.expect_kind(&TokenKind::DauNgoacVuongDong)?;
         }
-        self.advance(); // làm
+        self.expect_kind(&TokenKind::Lam)?;
         let mut than = Vec::new();
-        while !self.check_kind(&TokenKind::KetThuc) {
+        loop {
+            self.skip_punctuation();
+            if self.check_kind(&TokenKind::KetThuc) || self.peek().is_none() {
+                break;
+            }
             than.push(self.parse_statement()?);
         }
-        self.advance(); // kết_thúc
-        self.skip_dau_cham();
+        self.expect_kind(&TokenKind::KetThuc)?;
+        self.skip_punctuation();
         Ok(VongLap { bien, danh_sach, than })
     }
 
+    // ==================== HÀM ====================
     fn parse_ham(&mut self) -> Result<Ham, String> {
         self.advance(); // hàm
         let ten = self.expect_ten()?;
         let mut tham_so = Vec::new();
         if self.check_kind(&TokenKind::DauNgoacTronMo) {
             self.advance();
-            while !self.check_kind(&TokenKind::DauNgoacTronDong) {
+            while !self.check_kind(&TokenKind::DauNgoacTronDong) && self.peek().is_some() {
                 tham_so.push(self.expect_ten()?);
                 if self.check_kind(&TokenKind::DauPhay) { self.advance(); }
             }
-            self.advance();
+            self.expect_kind(&TokenKind::DauNgoacTronDong)?;
         }
-        self.advance(); // là
+        self.expect_kind(&TokenKind::La)?;
         let mut than = Vec::new();
-        while !self.check_kind(&TokenKind::KetThuc) {
+        loop {
+            self.skip_punctuation();
+            if self.check_kind(&TokenKind::KetThuc) || self.peek().is_none() {
+                break;
+            }
             than.push(self.parse_statement()?);
         }
-        self.advance(); // kết_thúc
-        self.skip_dau_cham();
+        self.expect_kind(&TokenKind::KetThuc)?;
+        self.skip_punctuation();
         Ok(Ham { ten, tham_so, than })
     }
 
-    fn expect_ten(&mut self) -> Result<String, String> {
-        if let TokenKind::Ten(s) = &self.advance().kind {
-            Ok(s.clone())
+    // ==================== HELPERS ====================
+    fn parse_predicate(&mut self) -> Result<String, String> {
+        if self.check_kind(&TokenKind::La) {
+            self.advance();
+            Ok("là".to_string())
         } else {
-            Err(format!("Mong đợi tên nhưng gặp {:?}", self.peek()))
+            self.expect_ten()
+        }
+    }
+
+    fn parse_optional_object(&mut self) -> Option<String> {
+        if self.check_ten() || self.check_chuoi() || self.check_so() {
+            self.advance_value().ok()
+        } else if self.check_kind(&TokenKind::DauHoi) {
+            self.advance();
+            Some("?".to_string())
+        } else {
+            None
+        }
+    }
+
+    fn expect_ten(&mut self) -> Result<String, String> {
+        self.skip_punctuation();
+        match self.advance() {
+            Some(Token { kind: TokenKind::Ten(s), .. }) => Ok(s),
+            other => Err(format!("Mong đợi tên nhưng gặp {:?}", other)),
+        }
+    }
+
+    fn expect_chuoi(&mut self) -> Result<String, String> {
+        self.skip_punctuation();
+        match self.advance() {
+            Some(Token { kind: TokenKind::Chuoi(s), .. }) => Ok(s),
+            other => Err(format!("Mong đợi chuỗi nhưng gặp {:?}", other)),
+        }
+    }
+
+    fn advance_value(&mut self) -> Result<String, String> {
+        self.skip_punctuation();
+        match self.advance() {
+            Some(tok) => match tok.kind {
+                TokenKind::Ten(s) => Ok(s),
+                TokenKind::Chuoi(s) => Ok(s),
+                TokenKind::So(n) => Ok(n.to_string()),
+                _ => Err(format!("Mong đợi giá trị nhưng gặp {:?}", tok)),
+            },
+            None => Err("Kết thúc file bất ngờ".to_string()),
+        }
+    }
+
+    fn check_ten(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::Ten(_), .. })) }
+    fn check_chuoi(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::Chuoi(_), .. })) }
+    fn check_so(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::So(_), .. })) }
+
+    fn check_kind(&self, kind: &TokenKind) -> bool {
+        match self.peek() {
+            Some(tok) => std::mem::discriminant(&tok.kind) == std::mem::discriminant(kind),
+            None => false,
+        }
+    }
+
+    fn expect_kind(&mut self, kind: &TokenKind) -> Result<(), String> {
+        self.skip_punctuation();
+        if self.check_kind(kind) {
+            self.advance();
+            Ok(())
+        } else {
+            Err(format!("Mong đợi {:?} nhưng gặp {:?}", kind, self.peek()))
         }
     }
 }
