@@ -11,4 +11,5 @@ members = [
     "triai",
     "trios"
 
-, "tricore", "tripm"]
+, "tricore", "tripm",
+    "tristudio", "tristudio"]

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tri Studio - Môi trường phát triển TriOS</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌱 Tri Studio</h1>
+            <div class="toolbar">
+                <button onclick="runCode()" class="btn btn-run">▶ Chạy</button>
+                <button onclick="saveCode()" class="btn btn-save">💾 Lưu</button>
+                <input type="file" id="fileInput" onchange="openFile()" hidden>
+                <button onclick="document.getElementById('fileInput').click()" class="btn btn-open">📂 Mở</button>
+                <span id="status" class="status"></span>
+            </div>
+        </header>
+        <main>
+            <div class="editor-panel">
+                <textarea id="codeEditor">chương_trình "Ví dụ"
+bắt_đầu
+    in_ra "Xin chào từ Tri Studio!"
+    mèo là động_vật.
+    hỏi mèo là gì?
+kết_thúc</textarea>
+            </div>
+            <div class="output-panel">
+                <div class="output-header">Kết quả:</div>
+                <pre id="output"></pre>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
