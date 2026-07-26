@@ -1,0 +1,13 @@
+[du_an]
+
+ten="{{TEN_DU_AN}}"
+
+phien_ban="0.1.0"
+
+loai="ung_dung"
+
+runtime="TriVM"
+
+compiler="TriC"
+
+ngon_ngu="Tri"

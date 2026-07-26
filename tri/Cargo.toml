@@ -1,6 +1,8 @@
 [package]
 name = "tri"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "TriOS CLI – Bootstrap tool"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
