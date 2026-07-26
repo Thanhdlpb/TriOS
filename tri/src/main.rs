@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use tricore::lexer::Lexer;
 use tricore::parser::Parser as TriParser;
 use tricore::interpreter::Interpreter;
+use tricore::hoc_tap;
 
 #[derive(Parser)]
 #[command(name = "tri")]
@@ -16,7 +17,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Khởi tạo ứng dụng mới
     Tao {
         #[arg(short, long)]
         ung_dung: Option<String>,
@@ -25,9 +25,7 @@ enum Commands {
         #[arg(short, long)]
         plugin: Option<String>,
     },
-    /// Chạy file .tri hoặc khởi động REPL
     Chay {
-        /// File .tri cần chạy (nếu không chỉ định, sẽ vào REPL)
         file: Option<String>,
     },
 }
@@ -81,8 +79,63 @@ fn chay_file(filename: &str) {
     }
 }
 
+fn xu_ly_cau_lenh(interpreter: &mut Interpreter, input: &str) {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+
+    if let Some(filepath) = trimmed.strip_prefix("lưu ") {
+        match interpreter.kb.luu(filepath.trim()) {
+            Ok(()) => println!("✅ Đã lưu tri thức vào '{}'", filepath.trim()),
+            Err(e) => eprintln!("Lỗi: {}", e),
+        }
+        return;
+    }
+    if let Some(filepath) = trimmed.strip_prefix("nạp ") {
+        match interpreter.kb.nap(filepath.trim()) {
+            Ok(()) => println!("✅ Đã nạp tri thức từ '{}'", filepath.trim()),
+            Err(e) => eprintln!("Lỗi: {}", e),
+        }
+        return;
+    }
+    if let Some(filepath) = trimmed.strip_prefix("học ") {
+        match hoc_tap::hoc_tu_tep(interpreter, filepath.trim()) {
+            Ok(count) => println!("✅ Đã học {} câu từ '{}'", count, filepath.trim()),
+            Err(e) => eprintln!("Lỗi: {}", e),
+        }
+        return;
+    }
+
+    let processed = if !trimmed.ends_with('.') && !trimmed.ends_with('?') {
+        format!("{}.", trimmed)
+    } else {
+        trimmed.to_string()
+    };
+
+    let mut lexer = Lexer::new(&processed);
+    let mut tokens = Vec::new();
+    loop {
+        let token = lexer.next_token();
+        let is_eof = token.kind == tricore::token::TokenKind::EOF;
+        tokens.push(token);
+        if is_eof { break; }
+    }
+    let mut parser = TriParser::new(tokens);
+    match parser.parse_chuong_trinh() {
+        Ok(statements) => {
+            let output = interpreter.run(&statements);
+            for line in output {
+                println!("{}", line);
+            }
+        }
+        Err(e) => eprintln!("❌ Lỗi: {}", e),
+    }
+}
+
 fn repl() {
     println!("🌱 TriOS REPL (gõ 'thoát' để dừng)");
+    println!("   Lệnh đặc biệt: lưu <file>, nạp <file>, học <file>");
     let mut interpreter = Interpreter::new();
     let mut input_buffer = String::new();
     loop {
@@ -96,32 +149,7 @@ fn repl() {
         if trimmed == "thoát" || trimmed == "exit" || trimmed == "quit" {
             break;
         }
-        if trimmed.is_empty() {
-            continue;
-        }
-        let input = if !trimmed.ends_with('.') && !trimmed.ends_with('?') {
-            format!("{}.", trimmed)
-        } else {
-            trimmed.to_string()
-        };
-        let mut lexer = Lexer::new(&input);
-        let mut tokens = Vec::new();
-        loop {
-            let token = lexer.next_token();
-            let is_eof = token.kind == tricore::token::TokenKind::EOF;
-            tokens.push(token);
-            if is_eof { break; }
-        }
-        let mut parser = TriParser::new(tokens);
-        match parser.parse_chuong_trinh() {
-            Ok(statements) => {
-                let output = interpreter.run(&statements);
-                for line in output {
-                    println!("{}", line);
-                }
-            }
-            Err(e) => eprintln!("Lỗi: {}", e),
-        }
+        xu_ly_cau_lenh(&mut interpreter, trimmed);
     }
     println!("Đã thoát REPL.");
 }
