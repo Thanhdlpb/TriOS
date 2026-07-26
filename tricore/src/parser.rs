@@ -37,6 +37,18 @@ impl Parser {
         std::mem::discriminant(&self.peek().kind) == std::mem::discriminant(kind)
     }
 
+    fn skip_dau_cham(&mut self) {
+        if self.check_kind(&TokenKind::DauCham) {
+            self.advance();
+        }
+    }
+
+    fn skip_dau_hoi(&mut self) {
+        if self.check_kind(&TokenKind::DauHoi) {
+            self.advance();
+        }
+    }
+
     pub fn parse_chuong_trinh(&mut self) -> Result<Vec<Statement>, String> {
         let mut statements = Vec::new();
         while !self.check_kind(&TokenKind::EOF) {
@@ -46,6 +58,7 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> Result<Statement, String> {
+        self.skip_dau_cham();
         match &self.peek().kind {
             TokenKind::ChuongTrinh => Ok(Statement::ChuongTrinh(self.parse_full_chuong_trinh()?)),
             TokenKind::Ham => Ok(Statement::Ham(self.parse_ham()?)),
@@ -79,8 +92,11 @@ impl Parser {
 
     fn parse_phat_bieu(&mut self) -> Result<PhatBieu, String> {
         let chu_ngu = self.expect_ten()?;
-        let dong_tu = if self.check_ten() || self.check_kind(&TokenKind::La) {
+        let dong_tu = if self.check_ten() {
             Some(self.expect_ten()?)
+        } else if self.check_kind(&TokenKind::La) {
+            self.advance();
+            Some("là".to_string())
         } else {
             None
         };
@@ -94,9 +110,7 @@ impl Parser {
         } else {
             None
         };
-        if self.check_kind(&TokenKind::DauCham) {
-            self.advance();
-        }
+        self.skip_dau_cham();
         Ok(PhatBieu { chu_ngu, dong_tu, tan_ngu })
     }
 
@@ -115,15 +129,37 @@ impl Parser {
         let p = self.expect_ten()?;
         let o = self.expect_ten()?;
         let ket_luan = (s, p, o);
-        if self.check_kind(&TokenKind::DauCham) { self.advance(); }
+        self.skip_dau_cham();
         Ok(Luat { dieu_kien, ket_luan })
     }
 
     fn parse_truy_van(&mut self) -> Result<TruyVan, String> {
         self.advance(); // hỏi
         let s = self.expect_ten()?;
-        let p = self.expect_ten()?;
-        let o = self.expect_ten()?;
+        let p = if self.check_kind(&TokenKind::La) {
+            self.advance();
+            "là".to_string()
+        } else {
+            self.expect_ten()?
+        };
+        let o = if self.check_ten() {
+            let ten = self.expect_ten()?;
+            if ten == "gì" {
+                "?".to_string()
+            } else {
+                ten
+            }
+        } else if self.check_chuoi() {
+            if let TokenKind::Chuoi(c) = &self.advance().kind {
+                c.clone()
+            } else {
+                unreachable!()
+            }
+        } else if self.check_kind(&TokenKind::DauHoi) {
+            "?".to_string()
+        } else {
+            return Err(format!("Mong đợi tân ngữ hoặc 'gì' nhưng gặp {:?}", self.peek()));
+        };
         let muc_tieu = (s, p, o);
         let mut rang_buoc = None;
         if self.check_kind(&TokenKind::Khi) {
@@ -134,10 +170,12 @@ impl Parser {
                 let cp = self.expect_ten()?;
                 let co = self.expect_ten()?;
                 constraints.push((cs, cp, co));
+                self.skip_dau_cham();
             }
             rang_buoc = Some(constraints);
         }
-        if self.check_kind(&TokenKind::DauHoi) { self.advance(); }
+        self.skip_dau_hoi();
+        self.skip_dau_cham();
         Ok(TruyVan { muc_tieu, rang_buoc })
     }
 
@@ -148,7 +186,7 @@ impl Parser {
             TokenKind::Ten(s) => s.clone(),
             _ => return Err("Mong đợi chuỗi hoặc biến".into()),
         };
-        if self.check_kind(&TokenKind::DauCham) { self.advance(); }
+        self.skip_dau_cham();
         Ok(InRa { bieu_thuc })
     }
 
@@ -172,7 +210,7 @@ impl Parser {
             than.push(self.parse_statement()?);
         }
         self.advance(); // kết_thúc
-        if self.check_kind(&TokenKind::DauCham) { self.advance(); }
+        self.skip_dau_cham();
         Ok(VongLap { bien, danh_sach, than })
     }
 
@@ -194,7 +232,7 @@ impl Parser {
             than.push(self.parse_statement()?);
         }
         self.advance(); // kết_thúc
-        if self.check_kind(&TokenKind::DauCham) { self.advance(); }
+        self.skip_dau_cham();
         Ok(Ham { ten, tham_so, than })
     }
 
@@ -202,7 +240,7 @@ impl Parser {
         if let TokenKind::Ten(s) = &self.advance().kind {
             Ok(s.clone())
         } else {
-            Err("Mong đợi tên".into())
+            Err(format!("Mong đợi tên nhưng gặp {:?}", self.peek()))
         }
     }
 }

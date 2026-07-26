@@ -2,6 +2,7 @@ use std::fs;
 use std::env;
 use tricore::lexer::Lexer;
 use tricore::parser::Parser;
+use tricore::interpreter::Interpreter;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,9 +22,11 @@ fn main() {
     }
     let mut parser = Parser::new(tokens);
     match parser.parse_chuong_trinh() {
-        Ok(ast) => {
-            for stmt in &ast {
-                println!("{}", stmt);
+        Ok(statements) => {
+            let mut interpreter = Interpreter::new();
+            let output = interpreter.run(&statements);
+            for line in output {
+                println!("{}", line);
             }
         }
         Err(e) => eprintln!("Lỗi phân tích cú pháp: {}", e),
