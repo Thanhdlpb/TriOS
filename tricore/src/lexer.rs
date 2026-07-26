@@ -95,6 +95,8 @@ impl Lexer {
             Some('-') => Token::new(TokenKind::Tru, line, col),
             Some('*') => Token::new(TokenKind::Nhan, line, col),
             Some('/') => Token::new(TokenKind::Chia, line, col),
+            Some('>') => Token::new(TokenKind::LonHon, line, col),
+            Some('<') => Token::new(TokenKind::NhoHon, line, col),
             Some('"') => {
                 let s = self.read_string();
                 Token::new(TokenKind::Chuoi(s), line, col)
@@ -122,7 +124,9 @@ impl Lexer {
                     "với" => Token::new(TokenKind::Voi, line, col),
                     "mỗi" => Token::new(TokenKind::Moi, line, col),
                     "trong" => Token::new(TokenKind::Trong, line, col),
-                    "làm" => Token::new(TokenKind::Lam, line, col),   // <<< Nhận diện "làm"
+                    "làm" => Token::new(TokenKind::Lam, line, col),
+                    "nếu_khác" => Token::new(TokenKind::NeuKhac, line, col),
+                    "trong_khi" => Token::new(TokenKind::TrongKhi, line, col),
                     _ => Token::new(TokenKind::Ten(ident), line, col),
                 }
             }

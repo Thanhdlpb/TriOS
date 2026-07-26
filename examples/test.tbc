@@ -1,0 +1,14 @@
+{
+  "instructions": [
+    {"Push": 10.0},
+    {"Push": 20.0},
+    "Add",
+    "Print",
+    {"Push": 5.0},
+    {"Push": 3.0},
+    "Mul",
+    "Print",
+    "Halt"
+  ],
+  "entry_point": 0
+}

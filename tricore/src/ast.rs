@@ -8,6 +8,8 @@ pub enum Statement {
     InRa(InRa),
     VongLap(VongLap),
     Ham(Ham),
+    IfElse(IfElse),
+    WhileLoop(WhileLoop),
     ChuongTrinh(ChuongTrinh),
 }
 
@@ -65,6 +67,35 @@ impl fmt::Display for Statement {
             Statement::VongLap(v) => write!(f, "vòng lặp {} trong {:?}", v.bien, v.danh_sach),
             Statement::Ham(h) => write!(f, "hàm {}({:?})", h.ten, h.tham_so),
             Statement::ChuongTrinh(c) => write!(f, "chương trình '{}'", c.ten),
+            Statement::IfElse(_) => write!(f, "nếu...thì..."),
+            Statement::WhileLoop(_) => write!(f, "trong_khi..."),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfElse {
+    pub dieu_kien: (String, String, String),
+    pub dung: Vec<Statement>,
+    pub sai: Option<Vec<Statement>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhileLoop {
+    pub dieu_kien: (String, String, String),
+    pub than: Vec<Statement>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expression {
+    So(f64),
+    Chuoi(String),
+    Bien(String),
+    Cong(Box<Expression>, Box<Expression>),
+    Tru(Box<Expression>, Box<Expression>),
+    Nhan(Box<Expression>, Box<Expression>),
+    Chia(Box<Expression>, Box<Expression>),
+    LonHon(Box<Expression>, Box<Expression>),
+    NhoHon(Box<Expression>, Box<Expression>),
+    Bang(Box<Expression>, Box<Expression>),
 }

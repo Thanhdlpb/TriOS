@@ -3,7 +3,9 @@ pub enum TokenKind {
     // Từ khóa
     ChuongTrinh, BatDau, KetThuc, InRa, Ham,
     Neu, Thi, Va, Hoi, Khi, La, Cho, Dung,
-    Voi, Moi, Trong, Lam,  // <<< Thêm Lam
+    Voi, Moi, Trong, Lam, NeuKhac, TrongKhi,
+    // Toán tử
+    LonHon, NhoHon, Bang, Khac,
     // Ký hiệu
     DauCham, DauPhay, DauHoi,
     DauNgoacTronMo, DauNgoacTronDong,

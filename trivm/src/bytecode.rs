@@ -1,22 +1,37 @@
-#[derive(Debug, Clone, PartialEq)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OpCode {
     Push(f64),
     Pop,
+    Dup,
+    Swap,
+    Load(String),
+    Store(String),
+    Jmp(usize),
+    Jz(usize),
+    Jnz(usize),
+    Call(usize),
+    Ret,
     Add,
     Sub,
     Mul,
     Div,
-    Load(String),
-    Store(String),
-    Call(String),
-    Ret,
-    Jmp(usize),
-    Jz(usize),
+    Mod,
+    Eq,
+    Neq,
+    Gt,
+    Lt,
+    Gte,
+    Lte,
+    And,
+    Or,
+    Not,
     Print,
+    PrintLn,
+    Input,
+    AssertFact(String, String, String),
+    QueryFact(String, String, String),
     Halt,
-}
-
-#[derive(Debug, Clone)]
-pub struct Bytecode {
-    pub instructions: Vec<OpCode>,
+    Nop,
 }
