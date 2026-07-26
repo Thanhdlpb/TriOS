@@ -1,0 +1,14 @@
+[workspace]
+
+resolver = "2"
+
+members = [
+
+    "tri",
+    "tric",
+    "trivm",
+    "trilib",
+    "triai",
+    "trios"
+
+, "tricore"]

@@ -1,0 +1,17 @@
+[trios]
+
+ten="TriOS"
+
+phien_ban="0.1.0"
+
+nguoi_sang_lap="Thanh"
+
+ngon_ngu_mac_dinh="vi"
+
+bo_ma="UTF-8"
+
+runtime="TriVM"
+
+compiler="TriC"
+
+ai="TriAI"

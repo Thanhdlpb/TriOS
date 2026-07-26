@@ -1,0 +1,12 @@
+# Rust
+/target
+Cargo.lock
+**/*.rs.bk
+
+# Termux
+*.apk
+*.dex
+
+# IDE
+.idea/
+.vscode/
