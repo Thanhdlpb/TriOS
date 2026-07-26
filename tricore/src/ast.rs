@@ -8,9 +8,12 @@ pub enum Statement {
     InRa(InRa),
     VongLap(VongLap),
     Ham(Ham),
+    ChuongTrinh(ChuongTrinh),
     IfElse(IfElse),
     WhileLoop(WhileLoop),
-    ChuongTrinh(ChuongTrinh),
+    Gan(Gan),
+    TraVe(TraVe),
+    BieuThucStmt(BieuThucStmt),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -57,22 +60,6 @@ pub struct ChuongTrinh {
     pub than: Vec<Statement>,
 }
 
-impl fmt::Display for Statement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Statement::PhatBieu(p) => write!(f, "{} {:?} {:?}", p.chu_ngu, p.dong_tu, p.tan_ngu),
-            Statement::Luat(l) => write!(f, "luật: {:?} -> {:?}", l.dieu_kien, l.ket_luan),
-            Statement::TruyVan(t) => write!(f, "truy vấn: {:?}", t.muc_tieu),
-            Statement::InRa(i) => write!(f, "in ra: {}", i.bieu_thuc),
-            Statement::VongLap(v) => write!(f, "vòng lặp {} trong {:?}", v.bien, v.danh_sach),
-            Statement::Ham(h) => write!(f, "hàm {}({:?})", h.ten, h.tham_so),
-            Statement::ChuongTrinh(c) => write!(f, "chương trình '{}'", c.ten),
-            Statement::IfElse(_) => write!(f, "nếu...thì..."),
-            Statement::WhileLoop(_) => write!(f, "trong_khi..."),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfElse {
     pub dieu_kien: (String, String, String),
@@ -87,6 +74,22 @@ pub struct WhileLoop {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Gan {
+    pub bien: String,
+    pub bieu_thuc: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TraVe {
+    pub bieu_thuc: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BieuThucStmt {
+    pub bieu_thuc: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     So(f64),
     Chuoi(String),
@@ -98,4 +101,23 @@ pub enum Expression {
     LonHon(Box<Expression>, Box<Expression>),
     NhoHon(Box<Expression>, Box<Expression>),
     Bang(Box<Expression>, Box<Expression>),
+}
+
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::PhatBieu(p) => write!(f, "{} {:?} {:?}", p.chu_ngu, p.dong_tu, p.tan_ngu),
+            Statement::Luat(l) => write!(f, "luật: {:?} -> {:?}", l.dieu_kien, l.ket_luan),
+            Statement::TruyVan(t) => write!(f, "truy vấn: {:?}", t.muc_tieu),
+            Statement::InRa(i) => write!(f, "in ra: {}", i.bieu_thuc),
+            Statement::VongLap(v) => write!(f, "vòng lặp {} trong {:?}", v.bien, v.danh_sach),
+            Statement::Ham(h) => write!(f, "hàm {}({:?})", h.ten, h.tham_so),
+            Statement::ChuongTrinh(c) => write!(f, "chương trình '{}'", c.ten),
+            Statement::IfElse(_) => write!(f, "nếu...thì..."),
+            Statement::WhileLoop(_) => write!(f, "trong_khi..."),
+            Statement::Gan(g) => write!(f, "{} = {}", g.bien, g.bieu_thuc),
+            Statement::TraVe(t) => write!(f, "trả về {}", t.bieu_thuc),
+            Statement::BieuThucStmt(b) => write!(f, "{}", b.bieu_thuc),
+        }
+    }
 }

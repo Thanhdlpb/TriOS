@@ -6,6 +6,7 @@ use tricore::lexer::Lexer;
 use tricore::parser::Parser as TriParser;
 use tricore::interpreter::Interpreter;
 use tricore::hoc_tap;
+use triai::runtime::{AIRuntime, SimpleLinearModel};
 
 #[derive(Parser)]
 #[command(name = "tri")]
@@ -79,12 +80,63 @@ fn chay_file(filename: &str) {
     }
 }
 
-fn xu_ly_cau_lenh(interpreter: &mut Interpreter, input: &str) {
+fn xu_ly_ai(ai_runtime: &mut AIRuntime, input: &str) {
+    let parts: Vec<&str> = input.splitn(3, ' ').collect();
+    match parts.get(0) {
+        Some(&"huan_luyen") => {
+            if parts.len() >= 3 {
+                let model_name = parts[1];
+                let data_file = parts[2];
+                match fs::read_to_string(data_file) {
+                    Ok(data) => {
+                        if !ai_runtime.has_model(model_name) {
+                            ai_runtime.register_model(Box::new(SimpleLinearModel::new(model_name)));
+                        }
+                        match ai_runtime.train(model_name, &data) {
+                            Ok(()) => println!("✅ Đã huấn luyện mô hình '{}' với dữ liệu từ '{}'", model_name, data_file),
+                            Err(e) => eprintln!("❌ Lỗi huấn luyện: {}", e),
+                        }
+                    }
+                    Err(e) => eprintln!("❌ Không đọc được file '{}': {}", data_file, e),
+                }
+            } else {
+                println!("❌ Sử dụng: ai huan_luyen <ten_mo_hinh> <file_du_lieu>");
+            }
+        }
+        Some(&"du_doan") => {
+            if parts.len() >= 3 {
+                let model_name = parts[1];
+                let input_value = parts[2];
+                match ai_runtime.predict(model_name, input_value) {
+                    Ok(result) => println!("🤖 Dự đoán: {}", result),
+                    Err(e) => eprintln!("❌ Lỗi dự đoán: {}", e),
+                }
+            } else {
+                println!("❌ Sử dụng: ai du_doan <ten_mo_hinh> <gia_tri>");
+            }
+        }
+        _ => {
+            println!("🤖 Lệnh AI:");
+            println!("   ai huan_luyen <ten_mo_hinh> <file_du_lieu>");
+            println!("   ai du_doan <ten_mo_hinh> <gia_tri>");
+        }
+    }
+}
+
+fn xu_ly_cau_lenh(interpreter: &mut Interpreter, ai_runtime: &mut AIRuntime, input: &str) {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         return;
     }
 
+    // Xử lý lệnh AI (phải kiểm tra trước, vì "ai" có thể bị nhầm với tên thực thể)
+    if trimmed.starts_with("ai ") {
+        let ai_input = &trimmed[3..].trim();
+        xu_ly_ai(ai_runtime, ai_input);
+        return;
+    }
+
+    // Xử lý lệnh đặc biệt
     if let Some(filepath) = trimmed.strip_prefix("lưu ") {
         match interpreter.kb.luu(filepath.trim()) {
             Ok(()) => println!("✅ Đã lưu tri thức vào '{}'", filepath.trim()),
@@ -107,6 +159,7 @@ fn xu_ly_cau_lenh(interpreter: &mut Interpreter, input: &str) {
         return;
     }
 
+    // Nếu không phải lệnh đặc biệt, xử lý như câu lệnh Tri
     let processed = if !trimmed.ends_with('.') && !trimmed.ends_with('?') {
         format!("{}.", trimmed)
     } else {
@@ -135,8 +188,9 @@ fn xu_ly_cau_lenh(interpreter: &mut Interpreter, input: &str) {
 
 fn repl() {
     println!("🌱 TriOS REPL (gõ 'thoát' để dừng)");
-    println!("   Lệnh đặc biệt: lưu <file>, nạp <file>, học <file>");
+    println!("   Lệnh đặc biệt: lưu <file>, nạp <file>, học <file>, ai <lệnh>");
     let mut interpreter = Interpreter::new();
+    let mut ai_runtime = AIRuntime::new();
     let mut input_buffer = String::new();
     loop {
         print!("tri> ");
@@ -149,7 +203,7 @@ fn repl() {
         if trimmed == "thoát" || trimmed == "exit" || trimmed == "quit" {
             break;
         }
-        xu_ly_cau_lenh(&mut interpreter, trimmed);
+        xu_ly_cau_lenh(&mut interpreter, &mut ai_runtime, trimmed);
     }
     println!("Đã thoát REPL.");
 }

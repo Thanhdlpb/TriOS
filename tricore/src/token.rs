@@ -4,6 +4,9 @@ pub enum TokenKind {
     ChuongTrinh, BatDau, KetThuc, InRa, Ham,
     Neu, Thi, Va, Hoi, Khi, La, Cho, Dung,
     Voi, Moi, Trong, Lam, NeuKhac, TrongKhi,
+    TraVe, DungSai, BoQua,
+    // Kiểu dữ liệu
+    SoNguyen, SoThuc, ChuoiKyTu, DungS, Mang,
     // Toán tử
     LonHon, NhoHon, Bang, Khac,
     // Ký hiệu
@@ -15,6 +18,7 @@ pub enum TokenKind {
     Ten(String),
     Chuoi(String),
     So(f64),
+    SoNguyenVal(i64),
     // Đặc biệt
     EOF,
 }

@@ -57,12 +57,60 @@ impl Parser {
             Some(Token { kind: TokenKind::Ham, .. }) => self.parse_ham().map(Statement::Ham),
             Some(Token { kind: TokenKind::Neu, .. }) => self.parse_if_else().map(Statement::IfElse),
             Some(Token { kind: TokenKind::TrongKhi, .. }) => self.parse_while().map(Statement::WhileLoop),
+            Some(Token { kind: TokenKind::TraVe, .. }) => self.parse_tra_ve().map(Statement::TraVe),
             Some(Token { kind: TokenKind::Hoi, .. }) => self.parse_truy_van().map(Statement::TruyVan),
             Some(Token { kind: TokenKind::InRa, .. }) => self.parse_in_ra().map(Statement::InRa),
             Some(Token { kind: TokenKind::Voi, .. }) => self.parse_vong_lap().map(Statement::VongLap),
-            Some(Token { kind: TokenKind::Ten(_), .. }) => self.parse_phat_bieu().map(Statement::PhatBieu),
+            Some(Token { kind: TokenKind::Ten(_), .. }) => {
+                // Kiểm tra xem có phải phép gán không (X = ...)
+                if self.pos + 1 < self.tokens.len() && self.tokens[self.pos + 1].kind == TokenKind::Gan {
+                    self.parse_gan().map(Statement::Gan)
+                } else {
+                    self.parse_phat_bieu().map(Statement::PhatBieu)
+                }
+            }
             _ => Err(format!("Token không mong đợi: {:?}", tok)),
         }
+    }
+
+    fn parse_gan(&mut self) -> Result<Gan, String> {
+        let bien = self.expect_ten()?;
+        self.expect_kind(&TokenKind::Gan)?;
+        let bieu_thuc = self.parse_bieu_thuc_string()?;
+        self.skip_punctuation();
+        Ok(Gan { bien, bieu_thuc })
+    }
+
+    fn parse_tra_ve(&mut self) -> Result<TraVe, String> {
+        self.advance(); // trả_về
+        let bieu_thuc = self.parse_bieu_thuc_string()?;
+        self.skip_punctuation();
+        Ok(TraVe { bieu_thuc })
+    }
+
+    fn parse_bieu_thuc_string(&mut self) -> Result<String, String> {
+        let mut result = String::new();
+        while !self.check_kind(&TokenKind::DauCham) && !self.check_kind(&TokenKind::KetThuc) && self.peek().is_some() {
+            if let Some(tok) = self.advance() {
+                match &tok.kind {
+                    TokenKind::Ten(s) => result.push_str(s),
+                    TokenKind::So(n) => result.push_str(&n.to_string()),
+                    TokenKind::SoNguyenVal(i) => result.push_str(&i.to_string()),
+                    TokenKind::Chuoi(s) => result.push_str(&format!("\"{}\"", s)),
+                    TokenKind::Cong => result.push_str(" + "),
+                    TokenKind::Tru => result.push_str(" - "),
+                    TokenKind::Nhan => result.push_str(" * "),
+                    TokenKind::Chia => result.push_str(" / "),
+                    TokenKind::DauNgoacTronMo => result.push('('),
+                    TokenKind::DauNgoacTronDong => result.push(')'),
+                    TokenKind::LonHon => result.push_str(" > "),
+                    TokenKind::NhoHon => result.push_str(" < "),
+                    TokenKind::Bang => result.push_str(" == "),
+                    _ => break,
+                }
+            }
+        }
+        Ok(result.trim().to_string())
     }
 
     fn parse_if_else(&mut self) -> Result<IfElse, String> {
@@ -301,6 +349,7 @@ impl Parser {
                 TokenKind::Ten(s) => Ok(s),
                 TokenKind::Chuoi(s) => Ok(s),
                 TokenKind::So(n) => Ok(n.to_string()),
+                TokenKind::SoNguyenVal(i) => Ok(i.to_string()),
                 _ => Err(format!("Mong đợi giá trị nhưng gặp {:?}", tok)),
             },
             None => Err("Kết thúc file bất ngờ".to_string()),
@@ -309,7 +358,7 @@ impl Parser {
 
     fn check_ten(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::Ten(_), .. })) }
     fn check_chuoi(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::Chuoi(_), .. })) }
-    fn check_so(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::So(_), .. })) }
+    fn check_so(&self) -> bool { matches!(self.peek(), Some(Token { kind: TokenKind::So(_), .. })) || matches!(self.peek(), Some(Token { kind: TokenKind::SoNguyenVal(_), .. })) }
 
     fn check_kind(&self, kind: &TokenKind) -> bool {
         match self.peek() {

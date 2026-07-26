@@ -65,16 +65,21 @@ impl Lexer {
         s
     }
 
-    fn read_number(&mut self, first: char) -> f64 {
+    fn read_number(&mut self, first: char) -> (f64, bool) {
         let mut s = String::new();
         s.push(first);
+        let mut is_integer = true;
         while let Some(c) = self.peek() {
-            if c.is_digit(10) || c == '.' {
+            if c.is_digit(10) {
+                s.push(c);
+                self.advance();
+            } else if c == '.' {
+                is_integer = false;
                 s.push(c);
                 self.advance();
             } else { break; }
         }
-        s.parse().unwrap_or(0.0)
+        (s.parse().unwrap_or(0.0), is_integer)
     }
 
     pub fn next_token(&mut self) -> Token {
@@ -102,8 +107,12 @@ impl Lexer {
                 Token::new(TokenKind::Chuoi(s), line, col)
             }
             Some(c) if c.is_digit(10) => {
-                let n = self.read_number(c);
-                Token::new(TokenKind::So(n), line, col)
+                let (n, is_int) = self.read_number(c);
+                if is_int && n == (n as i64) as f64 {
+                    Token::new(TokenKind::SoNguyenVal(n as i64), line, col)
+                } else {
+                    Token::new(TokenKind::So(n), line, col)
+                }
             }
             Some(c) if c.is_alphabetic() || c == '_' => {
                 let ident = self.read_identifier(c);
@@ -127,6 +136,14 @@ impl Lexer {
                     "làm" => Token::new(TokenKind::Lam, line, col),
                     "nếu_khác" => Token::new(TokenKind::NeuKhac, line, col),
                     "trong_khi" => Token::new(TokenKind::TrongKhi, line, col),
+                    "trả_về" => Token::new(TokenKind::TraVe, line, col),
+                    "đúng_sai" => Token::new(TokenKind::DungSai, line, col),
+                    "bỏ_qua" => Token::new(TokenKind::BoQua, line, col),
+                    "số_nguyên" => Token::new(TokenKind::SoNguyen, line, col),
+                    "số_thực" => Token::new(TokenKind::SoThuc, line, col),
+                    "chuỗi" => Token::new(TokenKind::ChuoiKyTu, line, col),
+                    "đúng" => Token::new(TokenKind::DungS, line, col),
+                    "mảng" => Token::new(TokenKind::Mang, line, col),
                     _ => Token::new(TokenKind::Ten(ident), line, col),
                 }
             }

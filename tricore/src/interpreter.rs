@@ -55,7 +55,6 @@ impl KnowledgeBase {
                 results.push((fact.subject.clone(), fact.predicate.clone(), fact.object.clone()));
             }
         }
-        // Kế thừa
         if p == "là" || p == "?" {
             let mut ancestors: HashMap<String, HashSet<String>> = HashMap::new();
             for fact in &self.facts {
@@ -100,7 +99,6 @@ impl KnowledgeBase {
                 }
             }
         }
-        // Luật
         for (conditions, conclusion) in &self.rules {
             if conditions.len() == 1 {
                 let (var, pred, value) = &conditions[0];
@@ -170,11 +168,18 @@ impl KnowledgeBase {
 pub struct Interpreter {
     pub kb: KnowledgeBase,
     pub output: Vec<String>,
+    pub variables: HashMap<String, String>,
+    pub functions: HashMap<String, Ham>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self { kb: KnowledgeBase::new(), output: Vec::new() }
+        Self {
+            kb: KnowledgeBase::new(),
+            output: Vec::new(),
+            variables: HashMap::new(),
+            functions: HashMap::new(),
+        }
     }
 
     pub fn run(&mut self, statements: &[Statement]) -> Vec<String> {
@@ -193,6 +198,14 @@ impl Interpreter {
                     self.kb.add_fact(p.chu_ngu.clone(), pred.clone(), o.to_string());
                 }
             }
+            Statement::Gan(g) => {
+                let value = self.eval_bieu_thuc(&g.bieu_thuc);
+                self.variables.insert(g.bien.clone(), value);
+            }
+            Statement::TraVe(t) => {
+                let value = self.eval_bieu_thuc(&t.bieu_thuc);
+                self.output.push(value);
+            }
             Statement::Luat(l) => {
                 self.kb.add_rule(l.dieu_kien.clone(), l.ket_luan.clone());
             }
@@ -208,7 +221,7 @@ impl Interpreter {
                 }
             }
             Statement::InRa(i) => {
-                self.output.push(i.bieu_thuc.clone());
+                self.output.push(self.eval_bieu_thuc(&i.bieu_thuc));
             }
             Statement::IfElse(ie) => {
                 let condition_met = self.kb.check_condition(&ie.dieu_kien);
@@ -231,13 +244,28 @@ impl Interpreter {
                     iteration += 1;
                 }
             }
-            Statement::VongLap(_) => {}
-            Statement::Ham(_) => {}
+            Statement::Ham(h) => {
+                self.functions.insert(h.ten.clone(), h.clone());
+            }
             Statement::ChuongTrinh(c) => {
                 for s in &c.than {
                     self.execute(s);
                 }
             }
+            _ => {}
         }
+    }
+
+    fn eval_bieu_thuc(&self, expr: &str) -> String {
+        // Nếu là biến, tra cứu
+        if let Some(val) = self.variables.get(expr.trim()) {
+            return val.clone();
+        }
+        // Nếu là chuỗi (có dấu ngoặc kép)
+        if expr.starts_with('"') && expr.ends_with('"') {
+            return expr[1..expr.len()-1].to_string();
+        }
+        // Mặc định trả về biểu thức như cũ
+        expr.to_string()
     }
 }
