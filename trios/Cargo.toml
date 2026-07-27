@@ -1,6 +1,16 @@
 [package]
 name = "trios"
-version = "0.1.0"
-edition = "2024"
+version = "0.2.0"
+edition = "2021"
 
 [dependencies]
+tricore = { path = "../tricore" }
+triai = { path = "../triai" }
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rumqttc = "0.24"
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
+urlencoding = "2"

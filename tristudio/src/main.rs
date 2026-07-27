@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpServer, HttpResponse, middleware};
+use actix_web::{web, App, HttpServer, HttpResponse};
 use actix_files::Files;
 use serde::{Deserialize, Serialize};
 use tricore::lexer::Lexer;
