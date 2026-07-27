@@ -1,6 +1,6 @@
 use std::fs;
 use crate::lexer::Lexer;
-use crate::parser::Parser as TriParser;
+use crate::parser::Parser;
 use crate::interpreter::Interpreter;
 
 pub fn hoc_tu_tep(interpreter: &mut Interpreter, filename: &str) -> Result<usize, String> {
@@ -22,8 +22,8 @@ pub fn hoc_tu_tep(interpreter: &mut Interpreter, filename: &str) -> Result<usize
             tokens.push(token);
             if is_eof { break; }
         }
-        let mut parser = TriParser::new(tokens);
-        if let Ok(statements) = parser.parse_chuong_trinh() {
+        let mut parser = Parser::new(tokens);
+        if let Ok(statements) = parser.parse() {
             interpreter.run(&statements);
             count += 1;
         }

@@ -1,0 +1,26 @@
+mèo là động_vật.
+chó là động_vật.
+động_vật là sinh_vật.
+sinh_vật có_thể_sống.
+
+mèo thích cá.
+chó thích xương.
+
+nếu X là động_vật suy_ra X có_thể_di_chuyển.
+nếu X là sinh_vật suy_ra X có_thể_sống.
+
+hỏi mèo là gì?
+hỏi mèo có_thể_di_chuyển gì?
+
+tên = "TriOS"
+phiên_bản = 1.0
+
+in "Hệ thống " + tên + " phiên bản " + phiên_bản
+
+nếu 5 > 3 thì
+    in "5 lớn hơn 3"
+kết_thúc
+
+lặp i từ 1 đến 3 thì
+    in i
+kết_thúc

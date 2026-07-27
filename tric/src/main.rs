@@ -10,8 +10,7 @@ fn main() {
         eprintln!("Sử dụng: tric <file.tri>");
         return;
     }
-    let filename = &args[1];
-    let source = fs::read_to_string(filename).expect("Không thể đọc file");
+    let source = fs::read_to_string(&args[1]).expect("Không thể đọc file");
     let mut lexer = Lexer::new(&source);
     let mut tokens = Vec::new();
     loop {
@@ -21,14 +20,12 @@ fn main() {
         if is_eof { break; }
     }
     let mut parser = Parser::new(tokens);
-    match parser.parse_chuong_trinh() {
-        Ok(statements) => {
+    match parser.parse() {
+        Ok(stmts) => {
             let mut interpreter = Interpreter::new();
-            let output = interpreter.run(&statements);
-            for line in output {
-                println!("{}", line);
-            }
+            let output = interpreter.run(&stmts);
+            for line in output { println!("{}", line); }
         }
-        Err(e) => eprintln!("Lỗi phân tích cú pháp: {}", e),
+        Err(e) => eprintln!("Lỗi: {}", e),
     }
 }

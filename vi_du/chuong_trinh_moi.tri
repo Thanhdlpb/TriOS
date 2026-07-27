@@ -1,0 +1,20 @@
+mèo là động_vật.
+chó là động_vật.
+động_vật là sinh_vật.
+mèo thích cá.
+
+nếu X là động_vật thì X có_thể_di_chuyển.
+
+hỏi mèo là gì?
+hỏi mèo thích gì?
+
+tên = "TriOS"
+in tên
+
+nếu 5 > 3 thì
+    in "5 lớn hơn 3"
+kết_thúc
+
+lặp i từ 1 đến 3 thì
+    in i
+kết_thúc

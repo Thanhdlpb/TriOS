@@ -1,65 +1,107 @@
 use crate::ast::*;
-use serde::{Serialize, Deserialize};
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use serde_json;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum TruthValue { True, False, Unknown }
-
-pub struct Fact {
-    pub subject: String,
-    pub predicate: String,
-    pub object: String,
-    pub truth: TruthValue,
-}
-
-impl Fact {
-    pub fn new(subject: String, predicate: String, object: String) -> Self {
-        Self { subject, predicate, object, truth: TruthValue::True }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct SerializableKB {
+pub struct Interpreter {
+    variables: HashMap<String, f64>,
+    string_vars: HashMap<String, String>,
     facts: Vec<(String, String, String)>,
-    rules: Vec<(Vec<(String, String, String)>, (String, String, String))>,
+    rules: Vec<(Vec<Condition>, Condition, RuleRelation)>,
+    output: Vec<String>,
 }
 
-pub struct KnowledgeBase {
-    facts: Vec<Fact>,
-    rules: Vec<(Vec<(String, String, String)>, (String, String, String))>,
-}
-
-impl KnowledgeBase {
+impl Interpreter {
     pub fn new() -> Self {
-        Self { facts: Vec::new(), rules: Vec::new() }
+        Self { variables: HashMap::new(), string_vars: HashMap::new(), facts: Vec::new(), rules: Vec::new(), output: Vec::new() }
     }
 
-    pub fn add_fact(&mut self, s: String, p: String, o: String) {
-        let (truth, pred) = if p.starts_with("không_") {
-            (TruthValue::False, p[6..].to_string())
-        } else {
-            (TruthValue::True, p)
-        };
-        self.facts.push(Fact { subject: s, predicate: pred, object: o, truth });
+    pub fn run(&mut self, stmts: &[Statement]) -> Vec<String> {
+        self.output.clear();
+        for stmt in stmts { self.execute(stmt); }
+        self.output.clone()
     }
 
-    pub fn add_rule(&mut self, conditions: Vec<(String, String, String)>, conclusion: (String, String, String)) {
-        self.rules.push((conditions, conclusion));
+    fn execute(&mut self, stmt: &Statement) {
+        match stmt {
+            Statement::Fact { subject, predicate, object, .. } => {
+                self.facts.push((subject.clone(), predicate.clone(), object.clone()));
+            }
+            Statement::Rule { condition, conclusion, relation } => {
+                self.rules.push((condition.clone(), conclusion.clone(), relation.clone()));
+            }
+            Statement::Query { subject, predicate, object, .. } => {
+                let mut results = self.query(subject, predicate, object);
+                results.sort();
+                results.dedup();
+                if results.is_empty() {
+                    self.output.push("Không tìm thấy.".to_string());
+                } else {
+                    for r in results { self.output.push(r); }
+                }
+            }
+            Statement::Print(expr) => {
+                let val = self.eval_to_string(expr);
+                self.output.push(val);
+            }
+            Statement::Assign { name, value } => {
+                match value {
+                    Expression::String(s) => { self.string_vars.insert(name.clone(), s.clone()); }
+                    _ => { self.variables.insert(name.clone(), self.eval(value)); }
+                }
+            }
+            Statement::IfElse { condition, then_body, else_body } => {
+                if self.eval(condition) != 0.0 {
+                    for s in then_body { self.execute(s); }
+                } else if let Some(else_stmts) = else_body {
+                    for s in else_stmts { self.execute(s); }
+                }
+            }
+            Statement::ForLoop { var, start, end, body } => {
+                let s = self.eval(start) as i64;
+                let e = self.eval(end) as i64;
+                for i in s..=e {
+                    self.variables.insert(var.clone(), i as f64);
+                    for stmt in body { self.execute(stmt); }
+                }
+            }
+            _ => {}
+        }
     }
 
-    pub fn query(&self, s: &str, p: &str, o: &str) -> Vec<(String, String, String)> {
+    fn query(&self, subject: &str, predicate: &str, object: &str) -> Vec<String> {
         let mut results = Vec::new();
-        for fact in &self.facts {
-            if fact.truth == TruthValue::True && self.match_fact(fact, s, p, o) {
-                results.push((fact.subject.clone(), fact.predicate.clone(), fact.object.clone()));
+        let mut inferred = HashSet::new();
+
+        for (s, p, o) in &self.facts {
+            if self.match_term(subject, s) && self.match_term(predicate, p) && self.match_term(object, o) {
+                results.push(format!("{} {} {}", s, p, o));
             }
         }
-        if p == "là" || p == "?" {
+
+        for (conditions, conclusion, _) in &self.rules {
+            if let Condition::Simple { subject: concl_s, predicate: concl_p, object: concl_o } = conclusion {
+                let bindings = self.find_bindings(conditions);
+                for binding in bindings {
+                    let inferred_s = self.apply_binding(concl_s, &binding);
+                    let inferred_p = self.apply_binding(concl_p, &binding);
+                    let inferred_o = self.apply_binding(concl_o, &binding);
+
+                    if self.match_term(subject, &inferred_s) && self.match_term(predicate, &inferred_p) && self.match_term(object, &inferred_o) {
+                        let result = format!("{} {} {}", inferred_s, inferred_p, inferred_o);
+                        if !inferred.contains(&result) {
+                            inferred.insert(result.clone());
+                            results.push(result);
+                        }
+                    }
+                }
+            }
+        }
+
+        if predicate == "là" || predicate == "?" {
             let mut ancestors: HashMap<String, HashSet<String>> = HashMap::new();
-            for fact in &self.facts {
-                if fact.predicate == "là" && fact.truth == TruthValue::True {
-                    ancestors.entry(fact.subject.clone()).or_default().insert(fact.object.clone());
+            for (s, p, o) in &self.facts {
+                if p == "là" {
+                    ancestors.entry(s.clone()).or_default().insert(o.clone());
                 }
             }
             let mut changed = true;
@@ -89,183 +131,130 @@ impl KnowledgeBase {
                 }
             }
             for (entity, parents) in &ancestors {
-                if s == "?" || s == entity {
+                if self.match_term(subject, entity) {
                     for parent in parents {
-                        let inherited = (entity.clone(), "là".to_string(), parent.clone());
-                        if !results.contains(&inherited) {
-                            results.push(inherited);
+                        let result = format!("{} là {}", entity, parent);
+                        if !results.contains(&result) {
+                            results.push(result);
                         }
                     }
                 }
             }
         }
-        for (conditions, conclusion) in &self.rules {
-            if conditions.len() == 1 {
-                let (var, pred, value) = &conditions[0];
-                if pred == "là" && var.starts_with(|c: char| c.is_uppercase()) {
-                    let mut matching = Vec::new();
-                    for fact in &self.facts {
-                        if fact.predicate == "là" && fact.object == *value && fact.truth == TruthValue::True {
-                            matching.push(fact.subject.clone());
-                        }
-                    }
-                    for entity in matching {
-                        let inferred_s = entity;
-                        let inferred_p = conclusion.1.clone();
-                        let inferred_o = conclusion.2.clone();
-                        let inferred = (inferred_s, inferred_p, inferred_o);
-                        if self.match_triple(&inferred, s, p, o) && !results.contains(&inferred) {
-                            results.push(inferred);
-                        }
-                    }
-                }
-            }
-        }
+
         results
     }
 
-    pub fn check_condition(&self, condition: &(String, String, String)) -> bool {
-        let results = self.query(&condition.0, &condition.1, &condition.2);
-        !results.is_empty()
+    fn find_bindings(&self, conditions: &Vec<Condition>) -> Vec<HashMap<String, String>> {
+        let mut all_bindings: Vec<HashMap<String, String>> = vec![HashMap::new()];
+        for condition in conditions {
+            let mut new_bindings = Vec::new();
+            match condition {
+                Condition::Simple { subject, predicate, object } => {
+                    for (s, p, o) in &self.facts {
+                        if p == predicate {
+                            for existing in &all_bindings {
+                                let mut binding = existing.clone();
+                                if self.unify(subject, s, &mut binding) && self.unify(object, o, &mut binding) {
+                                    new_bindings.push(binding);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            all_bindings = new_bindings;
+        }
+        all_bindings
     }
 
-    fn match_fact(&self, fact: &Fact, s: &str, p: &str, o: &str) -> bool {
-        (s == "?" || s == fact.subject) &&
-        (p == "?" || p == fact.predicate) &&
-        (o == "?" || o == fact.object) &&
-        fact.truth == TruthValue::True
+    fn unify(&self, var_or_value: &str, fact_value: &str, binding: &mut HashMap<String, String>) -> bool {
+        if var_or_value.chars().next().map_or(false, |c| c.is_uppercase()) {
+            if let Some(existing) = binding.get(var_or_value) {
+                existing == fact_value
+            } else {
+                binding.insert(var_or_value.to_string(), fact_value.to_string());
+                true
+            }
+        } else {
+            var_or_value == fact_value
+        }
     }
 
-    fn match_triple(&self, triple: &(String, String, String), s: &str, p: &str, o: &str) -> bool {
-        (s == "?" || s == triple.0) &&
-        (p == "?" || p == triple.1) &&
-        (o == "?" || o == triple.2)
+    fn apply_binding(&self, term: &str, binding: &HashMap<String, String>) -> String {
+        if term.chars().next().map_or(false, |c| c.is_uppercase()) {
+            binding.get(term).cloned().unwrap_or_else(|| term.to_string())
+        } else {
+            term.to_string()
+        }
+    }
+
+    fn match_term(&self, pattern: &str, value: &str) -> bool {
+        pattern == "?" || pattern == value || (pattern.chars().next().map_or(false, |c| c.is_uppercase()))
+    }
+
+    fn eval(&self, expr: &Expression) -> f64 {
+        match expr {
+            Expression::Number(n) => *n,
+            Expression::String(_) => 0.0,
+            Expression::Variable(name) => self.variables.get(name).copied().unwrap_or(0.0),
+            Expression::Add(a, b) => self.eval(a) + self.eval(b),
+            Expression::Sub(a, b) => self.eval(a) - self.eval(b),
+            Expression::Mul(a, b) => self.eval(a) * self.eval(b),
+            Expression::Div(a, b) => self.eval(a) / if self.eval(b) == 0.0 { 1.0 } else { self.eval(b) },
+            Expression::Gt(a, b) => if self.eval(a) > self.eval(b) { 1.0 } else { 0.0 },
+            Expression::Lt(a, b) => if self.eval(a) < self.eval(b) { 1.0 } else { 0.0 },
+            Expression::Eq(a, b) => if (self.eval(a) - self.eval(b)).abs() < 0.001 { 1.0 } else { 0.0 },
+        }
+    }
+
+    fn eval_to_string(&self, expr: &Expression) -> String {
+        match expr {
+            Expression::String(s) => s.clone(),
+            Expression::Variable(name) => {
+                if let Some(s) = self.string_vars.get(name) {
+                    return s.clone();
+                }
+                if let Some(v) = self.variables.get(name) {
+                    return if *v == (*v as i64) as f64 { format!("{}", *v as i64) } else { format!("{}", v) };
+                }
+                name.clone()
+            }
+            Expression::Add(a, b) => {
+                let left = self.eval_to_string(a);
+                let right = self.eval_to_string(b);
+                format!("{}{}", left, right)
+            }
+            _ => {
+                let v = self.eval(expr);
+                if v == (v as i64) as f64 { format!("{}", v as i64) } else { format!("{}", v) }
+            }
+        }
     }
 
     pub fn luu(&self, path: &str) -> Result<(), String> {
-        let facts: Vec<(String, String, String)> = self.facts.iter()
-            .filter(|f| f.truth == TruthValue::True)
-            .map(|f| (f.subject.clone(), f.predicate.clone(), f.object.clone()))
-            .collect();
-        let skb = SerializableKB { facts, rules: self.rules.clone() };
-        let json = serde_json::to_string_pretty(&skb).map_err(|e| e.to_string())?;
-        fs::write(path, json).map_err(|e| e.to_string())?;
-        Ok(())
+        let data = serde_json::json!({ "facts": self.facts });
+        std::fs::write(path, data.to_string()).map_err(|e| e.to_string())
     }
 
     pub fn nap(&mut self, path: &str) -> Result<(), String> {
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        let skb: SerializableKB = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
         self.facts.clear();
-        for (s, p, o) in skb.facts {
-            self.add_fact(s, p, o);
+        if let Some(facts) = data["facts"].as_array() {
+            for fact in facts {
+                if let Some(arr) = fact.as_array() {
+                    if arr.len() == 3 {
+                        self.facts.push((
+                            arr[0].as_str().unwrap_or("").to_string(),
+                            arr[1].as_str().unwrap_or("").to_string(),
+                            arr[2].as_str().unwrap_or("").to_string(),
+                        ));
+                    }
+                }
+            }
         }
-        self.rules = skb.rules;
         Ok(())
-    }
-}
-
-pub struct Interpreter {
-    pub kb: KnowledgeBase,
-    pub output: Vec<String>,
-    pub variables: HashMap<String, String>,
-    pub functions: HashMap<String, Ham>,
-}
-
-impl Interpreter {
-    pub fn new() -> Self {
-        Self {
-            kb: KnowledgeBase::new(),
-            output: Vec::new(),
-            variables: HashMap::new(),
-            functions: HashMap::new(),
-        }
-    }
-
-    pub fn run(&mut self, statements: &[Statement]) -> Vec<String> {
-        self.output.clear();
-        for stmt in statements {
-            self.execute(stmt);
-        }
-        self.output.clone()
-    }
-
-    fn execute(&mut self, stmt: &Statement) {
-        match stmt {
-            Statement::PhatBieu(p) => {
-                if let Some(pred) = &p.dong_tu {
-                    let o = p.tan_ngu.as_deref().unwrap_or("đúng");
-                    self.kb.add_fact(p.chu_ngu.clone(), pred.clone(), o.to_string());
-                }
-            }
-            Statement::Gan(g) => {
-                let value = self.eval_bieu_thuc(&g.bieu_thuc);
-                self.variables.insert(g.bien.clone(), value);
-            }
-            Statement::TraVe(t) => {
-                let value = self.eval_bieu_thuc(&t.bieu_thuc);
-                self.output.push(value);
-            }
-            Statement::Luat(l) => {
-                self.kb.add_rule(l.dieu_kien.clone(), l.ket_luan.clone());
-            }
-            Statement::TruyVan(t) => {
-                let (s, p, o) = &t.muc_tieu;
-                let results = self.kb.query(s, p, o);
-                if results.is_empty() {
-                    self.output.push("Không tìm thấy.".into());
-                } else {
-                    for (rs, rp, ro) in results {
-                        self.output.push(format!("{} {} {}.", rs, rp, ro));
-                    }
-                }
-            }
-            Statement::InRa(i) => {
-                self.output.push(self.eval_bieu_thuc(&i.bieu_thuc));
-            }
-            Statement::IfElse(ie) => {
-                let condition_met = self.kb.check_condition(&ie.dieu_kien);
-                if condition_met {
-                    for s in &ie.dung {
-                        self.execute(s);
-                    }
-                } else if let Some(sai) = &ie.sai {
-                    for s in sai {
-                        self.execute(s);
-                    }
-                }
-            }
-            Statement::WhileLoop(wl) => {
-                let mut iteration = 0;
-                while self.kb.check_condition(&wl.dieu_kien) && iteration < 1000 {
-                    for s in &wl.than {
-                        self.execute(s);
-                    }
-                    iteration += 1;
-                }
-            }
-            Statement::Ham(h) => {
-                self.functions.insert(h.ten.clone(), h.clone());
-            }
-            Statement::ChuongTrinh(c) => {
-                for s in &c.than {
-                    self.execute(s);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn eval_bieu_thuc(&self, expr: &str) -> String {
-        // Nếu là biến, tra cứu
-        if let Some(val) = self.variables.get(expr.trim()) {
-            return val.clone();
-        }
-        // Nếu là chuỗi (có dấu ngoặc kép)
-        if expr.starts_with('"') && expr.ends_with('"') {
-            return expr[1..expr.len()-1].to_string();
-        }
-        // Mặc định trả về biểu thức như cũ
-        expr.to_string()
     }
 }

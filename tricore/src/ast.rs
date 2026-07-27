@@ -2,122 +2,76 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    PhatBieu(PhatBieu),
-    Luat(Luat),
-    TruyVan(TruyVan),
-    InRa(InRa),
-    VongLap(VongLap),
-    Ham(Ham),
-    ChuongTrinh(ChuongTrinh),
-    IfElse(IfElse),
-    WhileLoop(WhileLoop),
-    Gan(Gan),
-    TraVe(TraVe),
-    BieuThucStmt(BieuThucStmt),
+    // Sự kiện
+    Fact { subject: String, predicate: String, object: String, tense: Option<String>, negation: bool },
+    // Luật suy luận
+    Rule { condition: Vec<Condition>, conclusion: Condition, relation: RuleRelation },
+    // Câu hỏi
+    Query { question_type: QuestionType, subject: String, predicate: String, object: String },
+    // Lệnh
+    Command { command_type: CommandType, action: String, target: Option<String> },
+    // Cấu trúc điều khiển
+    Print(Expression),
+    Assign { name: String, value: Expression },
+    IfElse { condition: Expression, then_body: Vec<Statement>, else_body: Option<Vec<Statement>> },
+    ForLoop { var: String, start: Expression, end: Expression, body: Vec<Statement> },
+    Function { name: String, params: Vec<String>, body: Vec<Statement> },
+    Program { name: String, body: Vec<Statement> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PhatBieu {
-    pub chu_ngu: String,
-    pub dong_tu: Option<String>,
-    pub tan_ngu: Option<String>,
+pub enum Condition {
+    Simple { subject: String, predicate: String, object: String },
+    Negation(Box<Condition>),
+    Conjunction(Box<Condition>, Box<Condition>),
+    Disjunction(Box<Condition>, Box<Condition>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Luat {
-    pub dieu_kien: Vec<(String, String, String)>,
-    pub ket_luan: (String, String, String),
+pub enum RuleRelation {
+    Implication,      // nếu...thì
+    Equivalence,      // nếu và chỉ nếu
+    Transitive,       // bắc cầu
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TruyVan {
-    pub muc_tieu: (String, String, String),
-    pub rang_buoc: Option<Vec<(String, String, String)>>,
+pub enum QuestionType {
+    YesNo,            // có...không?
+    What,             // là gì?
+    Where,            // ở đâu?
+    Who,              // ai?
+    When,             // khi nào?
+    How,              // như thế nào?
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct InRa {
-    pub bieu_thuc: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct VongLap {
-    pub bien: String,
-    pub danh_sach: Vec<String>,
-    pub than: Vec<Statement>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Ham {
-    pub ten: String,
-    pub tham_so: Vec<String>,
-    pub than: Vec<Statement>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ChuongTrinh {
-    pub ten: String,
-    pub than: Vec<Statement>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct IfElse {
-    pub dieu_kien: (String, String, String),
-    pub dung: Vec<Statement>,
-    pub sai: Option<Vec<Statement>>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WhileLoop {
-    pub dieu_kien: (String, String, String),
-    pub than: Vec<Statement>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Gan {
-    pub bien: String,
-    pub bieu_thuc: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct TraVe {
-    pub bieu_thuc: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct BieuThucStmt {
-    pub bieu_thuc: String,
+pub enum CommandType {
+    Do,               // hãy
+    Dont,             // đừng
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    So(f64),
-    Chuoi(String),
-    Bien(String),
-    Cong(Box<Expression>, Box<Expression>),
-    Tru(Box<Expression>, Box<Expression>),
-    Nhan(Box<Expression>, Box<Expression>),
-    Chia(Box<Expression>, Box<Expression>),
-    LonHon(Box<Expression>, Box<Expression>),
-    NhoHon(Box<Expression>, Box<Expression>),
-    Bang(Box<Expression>, Box<Expression>),
+    Number(f64),
+    String(String),
+    Variable(String),
+    Add(Box<Expression>, Box<Expression>),
+    Sub(Box<Expression>, Box<Expression>),
+    Mul(Box<Expression>, Box<Expression>),
+    Div(Box<Expression>, Box<Expression>),
+    Gt(Box<Expression>, Box<Expression>),
+    Lt(Box<Expression>, Box<Expression>),
+    Eq(Box<Expression>, Box<Expression>),
 }
 
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Statement::PhatBieu(p) => write!(f, "{} {:?} {:?}", p.chu_ngu, p.dong_tu, p.tan_ngu),
-            Statement::Luat(l) => write!(f, "luật: {:?} -> {:?}", l.dieu_kien, l.ket_luan),
-            Statement::TruyVan(t) => write!(f, "truy vấn: {:?}", t.muc_tieu),
-            Statement::InRa(i) => write!(f, "in ra: {}", i.bieu_thuc),
-            Statement::VongLap(v) => write!(f, "vòng lặp {} trong {:?}", v.bien, v.danh_sach),
-            Statement::Ham(h) => write!(f, "hàm {}({:?})", h.ten, h.tham_so),
-            Statement::ChuongTrinh(c) => write!(f, "chương trình '{}'", c.ten),
-            Statement::IfElse(_) => write!(f, "nếu...thì..."),
-            Statement::WhileLoop(_) => write!(f, "trong_khi..."),
-            Statement::Gan(g) => write!(f, "{} = {}", g.bien, g.bieu_thuc),
-            Statement::TraVe(t) => write!(f, "trả về {}", t.bieu_thuc),
-            Statement::BieuThucStmt(b) => write!(f, "{}", b.bieu_thuc),
+            Statement::Fact { subject, predicate, object, .. } => write!(f, "{} {} {}.", subject, predicate, object),
+            Statement::Query { subject, predicate, object, .. } => write!(f, "{} {} {}?", subject, predicate, object),
+            Statement::Print(expr) => write!(f, "in {:?}", expr),
+            Statement::Assign { name, value } => write!(f, "{} = {:?}", name, value),
+            _ => write!(f, "..."),
         }
     }
 }
