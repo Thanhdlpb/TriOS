@@ -204,6 +204,7 @@ impl Parser {
     }
 
     #[allow(dead_code)]
+    #[allow(dead_code)]
     fn parse_luat(&mut self) -> Result<Luat, String> {
         self.advance(); // nếu
         let mut dieu_kien = Vec::new();
@@ -316,6 +317,7 @@ impl Parser {
         }
     }
 
+    #[allow(dead_code)]
     #[allow(dead_code)]
     fn parse_optional_object(&mut self) -> Option<String> {
         if self.check_ten() || self.check_chuoi() || self.check_so() {
