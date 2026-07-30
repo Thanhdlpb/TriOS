@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TriOS Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        h1 { color: #58a6ff; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+        .card h2 { color: #58a6ff; margin-bottom: 10px; }
+        .agent-list { list-style: none; }
+        .agent-list li { padding: 8px; border-bottom: 1px solid #30363d; cursor: pointer; }
+        .agent-list li:hover { background: #1c2128; }
+        .agent-list .status { float: right; font-size: 12px; color: #8b949e; }
+        .agent-list .status.ready { color: #3fb950; }
+        .agent-list .status.running { color: #d29922; }
+        .output { background: #0d1117; border: 1px solid #30363d; padding: 10px; margin-top: 10px; min-height: 100px; white-space: pre-wrap; font-family: monospace; }
+        input[type="text"], textarea { width: 100%; padding: 8px; background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; margin-top: 10px; }
+        button { background: #238636; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #2ea043; }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #58a6ff; margin-right: 20px; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Studio</a>
+        <a href="/dashboard">Dashboard</a>
+    </div>
+    <h1>TriOS Agent Dashboard</h1>
+    <div class="grid">
+        <div class="card">
+            <h2>Agents</h2>
+            <ul class="agent-list" id="agent-list"></ul>
+        </div>
+        <div class="card">
+            <h2>Điều khiển Agent</h2>
+            <select id="agent-select" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;"></select>
+            <textarea id="agent-input" rows="3" placeholder="Nhập lệnh..."></textarea>
+            <button onclick="sendAgentCommand()">Gửi</button>
+            <div class="output" id="agent-output"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadAgents() {
+            const res = await fetch('/api/agent/list');
+            const data = await res.json();
+            const list = document.getElementById('agent-list');
+            const select = document.getElementById('agent-select');
+            list.innerHTML = '';
+            select.innerHTML = '';
+            data.agents.forEach(agent => {
+                list.innerHTML += `<li onclick="selectAgent('${agent.name}')">${agent.name} <span class="status ${agent.status}">${agent.status}</span></li>`;
+                select.innerHTML += `<option value="${agent.name}">${agent.name}</option>`;
+            });
+        }
+
+        function selectAgent(name) {
+            document.getElementById('agent-select').value = name;
+        }
+
+        async function sendAgentCommand() {
+            const agent = document.getElementById('agent-select').value;
+            const input = document.getElementById('agent-input').value;
+            const output = document.getElementById('agent-output');
+            output.textContent = 'Đang xử lý...';
+            const res = await fetch('/api/agent/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent, input })
+            });
+            const data = await res.json();
+            output.textContent = data.error || data.output;
+            loadAgents();
+        }
+
+        loadAgents();
+        setInterval(loadAgents, 5000);
+    </script>
+</body>
+</html>

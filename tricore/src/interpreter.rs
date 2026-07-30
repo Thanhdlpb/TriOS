@@ -64,6 +64,9 @@ impl Interpreter {
                     for stmt in body { self.execute(stmt); }
                 }
             }
+            Statement::ChuongTrinh { body, .. } => {
+                for s in body { self.execute(s); }
+            }
             _ => {}
         }
     }
@@ -213,13 +216,11 @@ impl Interpreter {
         match expr {
             Expression::String(s) => s.clone(),
             Expression::Variable(name) => {
-                if let Some(s) = self.string_vars.get(name) {
-                    return s.clone();
-                }
+                if let Some(s) = self.string_vars.get(name) { return s.clone(); }
                 if let Some(v) = self.variables.get(name) {
                     return if *v == (*v as i64) as f64 { format!("{}", *v as i64) } else { format!("{}", v) };
                 }
-                name.clone()
+                "0".to_string()
             }
             Expression::Add(a, b) => {
                 let left = self.eval_to_string(a);

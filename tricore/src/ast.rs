@@ -16,7 +16,8 @@ pub enum Statement {
     IfElse { condition: Expression, then_body: Vec<Statement>, else_body: Option<Vec<Statement>> },
     ForLoop { var: String, start: Expression, end: Expression, body: Vec<Statement> },
     Function { name: String, params: Vec<String>, body: Vec<Statement> },
-    Program { name: String, body: Vec<Statement> },
+    // Chương trình
+    ChuongTrinh { name: String, body: Vec<Statement> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,25 +30,25 @@ pub enum Condition {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuleRelation {
-    Implication,      // nếu...thì
-    Equivalence,      // nếu và chỉ nếu
-    Transitive,       // bắc cầu
+    Implication,
+    Equivalence,
+    Transitive,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum QuestionType {
-    YesNo,            // có...không?
-    What,             // là gì?
-    Where,            // ở đâu?
-    Who,              // ai?
-    When,             // khi nào?
-    How,              // như thế nào?
+    YesNo,
+    What,
+    Where,
+    Who,
+    When,
+    How,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CommandType {
-    Do,               // hãy
-    Dont,             // đừng
+    Do,
+    Dont,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +72,7 @@ impl fmt::Display for Statement {
             Statement::Query { subject, predicate, object, .. } => write!(f, "{} {} {}?", subject, predicate, object),
             Statement::Print(expr) => write!(f, "in {:?}", expr),
             Statement::Assign { name, value } => write!(f, "{} = {:?}", name, value),
+            Statement::ChuongTrinh { name, .. } => write!(f, "chương trình '{}'", name),
             _ => write!(f, "..."),
         }
     }

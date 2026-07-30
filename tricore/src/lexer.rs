@@ -41,7 +41,6 @@ impl Lexer {
     }
 
     fn read_string(&mut self) -> String {
-        // KHÔNG gọi self.advance() ở đây vì dấu " đã được advance trong next_token
         let mut s = String::new();
         while let Some(c) = self.peek() {
             if c == '"' { self.advance(); break; }
@@ -89,6 +88,8 @@ impl Lexer {
             Some(c) if c.is_alphabetic() || c == '_' => {
                 let ident = self.read_identifier(c);
                 match ident.as_str() {
+                    "chương_trình" => Token::new(TokenKind::ChuongTrinh, line, col),
+                    "bắt_đầu" => Token::new(TokenKind::BatDau, line, col),
                     "nếu" => Token::new(TokenKind::Neu, line, col),
                     "thì" => Token::new(TokenKind::Thi, line, col),
                     "không_thì" => Token::new(TokenKind::KhongThi, line, col),
@@ -98,6 +99,7 @@ impl Lexer {
                     "đến" => Token::new(TokenKind::Den, line, col),
                     "hàm" => Token::new(TokenKind::Ham, line, col),
                     "in" => Token::new(TokenKind::In, line, col),
+                    "in_ra" => Token::new(TokenKind::In, line, col),
                     "là" => Token::new(TokenKind::La, line, col),
                     "và" => Token::new(TokenKind::Va, line, col),
                     "hoặc" => Token::new(TokenKind::Hoac, line, col),

@@ -29,7 +29,6 @@ impl Parser {
         }
     }
 
-    // Kiểm tra xem token có thể dùng như một hành động/động từ không
     fn is_action_token(&self) -> bool {
         match self.peek() {
             Some(tok) => matches!(tok.kind, TokenKind::Ten(_) | TokenKind::In | TokenKind::Hoi | TokenKind::Lap | TokenKind::Ham | TokenKind::Hay | TokenKind::DungLenh),
@@ -37,7 +36,6 @@ impl Parser {
         }
     }
 
-    // Lấy token làm action (tên hoặc từ khóa hành động)
     fn expect_action(&mut self) -> Result<String, String> {
         match self.advance() {
             Some(Token { kind: TokenKind::Ten(s), .. }) => Ok(s),
@@ -65,11 +63,13 @@ impl Parser {
         self.skip_dot();
         let tok = self.peek().ok_or("Kết thúc file")?;
         match &tok.kind {
+            TokenKind::ChuongTrinh => self.parse_chuong_trinh().map(|(name, body)| Statement::ChuongTrinh { name, body }),
+            TokenKind::In => self.parse_print(),
+            TokenKind::Ten(ref s) if s == "in_ra" => self.parse_print(),
             TokenKind::Hay | TokenKind::DungLenh => self.parse_command(),
             TokenKind::Neu => self.parse_if_or_rule(),
             TokenKind::Lap => self.parse_for(),
             TokenKind::Ham => self.parse_function(),
-            TokenKind::In => self.parse_print(),
             TokenKind::Hoi | TokenKind::CoPhai => self.parse_query(),
             TokenKind::Ten(_) => {
                 if let Some(next) = self.peek_next() {
@@ -81,6 +81,24 @@ impl Parser {
             }
             _ => Err(format!("Token không mong đợi: {:?}", tok)),
         }
+    }
+
+    fn parse_chuong_trinh(&mut self) -> Result<(String, Vec<Statement>), String> {
+        self.advance(); // chương_trình
+        let name = if let Some(Token { kind: TokenKind::Chuoi(s), .. }) = self.advance() {
+            s
+        } else {
+            return Err("Mong đợi tên chương trình dạng chuỗi".to_string());
+        };
+        self.expect_kind(&TokenKind::BatDau)?;
+        let mut body = Vec::new();
+        loop {
+            self.skip_dot();
+            if self.check_kind(&TokenKind::KetThuc) || self.peek().is_none() { break; }
+            body.push(self.parse_statement()?);
+        }
+        self.expect_kind(&TokenKind::KetThuc)?;
+        Ok((name, body))
     }
 
     fn parse_fact(&mut self) -> Result<Statement, String> {
@@ -110,8 +128,10 @@ impl Parser {
             "là".to_string()
         } else if self.is_action_token() {
             self.expect_action()?
+        } else if self.peek().map_or(true, |t| matches!(t.kind, TokenKind::DauCham | TokenKind::DauHoi | TokenKind::DauThan | TokenKind::EOF)) {
+            "là".to_string()
         } else {
-            return Err("Mong đợi vị ngữ".to_string());
+            self.expect_action()?
         };
 
         let object = if self.peek().map_or(true, |t| matches!(t.kind, TokenKind::DauCham | TokenKind::DauHoi | TokenKind::DauThan | TokenKind::EOF)) {
