@@ -2,24 +2,20 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    // Sự kiện
     Fact { subject: String, predicate: String, object: String, tense: Option<String>, negation: bool },
-    // Luật suy luận
     Rule { condition: Vec<Condition>, conclusion: Condition, relation: RuleRelation },
-    // Câu hỏi
     Query { question_type: QuestionType, subject: String, predicate: String, object: String },
-    // Lệnh
     Command { command_type: CommandType, action: String, target: Option<String> },
-    // Cấu trúc điều khiển
     Print(Expression),
     Assign { name: String, value: Expression },
     IfElse { condition: Expression, then_body: Vec<Statement>, else_body: Option<Vec<Statement>> },
     ForLoop { var: String, start: Expression, end: Expression, body: Vec<Statement> },
     Function { name: String, params: Vec<String>, body: Vec<Statement> },
-    // Chương trình
     ChuongTrinh { name: String, body: Vec<Statement> },
+    UseModule { path: String }, // <<< THÊM MODULE
 }
 
+// ... (giữ nguyên các enum khác)
 #[derive(Debug, Clone, PartialEq)]
 pub enum Condition {
     Simple { subject: String, predicate: String, object: String },
@@ -29,33 +25,17 @@ pub enum Condition {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum RuleRelation {
-    Implication,
-    Equivalence,
-    Transitive,
-}
+pub enum RuleRelation { Implication, Equivalence, Transitive }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum QuestionType {
-    YesNo,
-    What,
-    Where,
-    Who,
-    When,
-    How,
-}
+pub enum QuestionType { YesNo, What, Where, Who, When, How }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CommandType {
-    Do,
-    Dont,
-}
+pub enum CommandType { Do, Dont }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Number(f64),
-    String(String),
-    Variable(String),
+    Number(f64), String(String), Variable(String),
     Add(Box<Expression>, Box<Expression>),
     Sub(Box<Expression>, Box<Expression>),
     Mul(Box<Expression>, Box<Expression>),
@@ -73,6 +53,7 @@ impl fmt::Display for Statement {
             Statement::Print(expr) => write!(f, "in {:?}", expr),
             Statement::Assign { name, value } => write!(f, "{} = {:?}", name, value),
             Statement::ChuongTrinh { name, .. } => write!(f, "chương trình '{}'", name),
+            Statement::UseModule { path } => write!(f, "dùng \"{}\"", path),
             _ => write!(f, "..."),
         }
     }

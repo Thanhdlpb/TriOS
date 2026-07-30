@@ -1,0 +1,5 @@
+chương_trình "TestModule"
+bắt_đầu
+    dùng "modules/chao.trl"
+    in "Chương trình chính kết thúc."
+kết_thúc

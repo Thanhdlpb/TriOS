@@ -1,6 +1,7 @@
 use crate::ast::*;
 use std::collections::{HashMap, HashSet};
 use serde_json;
+use std::fs;
 
 pub struct Interpreter {
     variables: HashMap<String, f64>,
@@ -66,6 +67,30 @@ impl Interpreter {
             }
             Statement::ChuongTrinh { body, .. } => {
                 for s in body { self.execute(s); }
+            }
+            Statement::UseModule { path } => {
+                match fs::read_to_string(path) {
+                    Ok(source) => {
+                        use crate::lexer::Lexer;
+                        use crate::parser::Parser;
+                        let mut lexer = Lexer::new(&source);
+                        let mut tokens = Vec::new();
+                        loop {
+                            let token = lexer.next_token();
+                            let is_eof = token.kind == crate::token::TokenKind::EOF;
+                            tokens.push(token);
+                            if is_eof { break; }
+                        }
+                        let mut parser = Parser::new(tokens);
+                        match parser.parse() {
+                            Ok(module_stmts) => {
+                                for s in module_stmts { self.execute(&s); }
+                            }
+                            Err(e) => self.output.push(format!("Lỗi module '{}': {}", path, e)),
+                        }
+                    }
+                    Err(e) => self.output.push(format!("Không thể đọc module '{}': {}", path, e)),
+                }
             }
             _ => {}
         }

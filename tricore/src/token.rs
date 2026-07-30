@@ -1,9 +1,12 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     // Từ khóa cấu trúc
-    Neu, Thi, KhongThi, KetThuc, Lap, Tu, Den, Ham, In, La, Va, Hoac, Dung, Sai,
-    Hoi, Gi, Dau, Nao,
-    ChuongTrinh, BatDau,
+    ChuongTrinh, BatDau, KetThuc, In, Ham,
+    Neu, Thi, KhongThi, Lap, Tu, Den,
+    Hoi, CoPhai, Hay, DungLenh,
+    La, Va, Hoac, Dung, Sai,
+    SuyRa, TuongDuong,
+    DungModule, // <<< THÊM TỪ KHÓA "dùng"
     // Quan hệ từ
     Cua, BangQuanHe, Voi, Ve, Cho, Tai, Trong, Tren, Duoi,
     // Thời gian
@@ -11,13 +14,9 @@ pub enum TokenKind {
     // Phủ định
     Khong, Chua, Chang,
     // Nghi vấn
-    CoPhai, HayKhong, DaChua,
-    // Mệnh lệnh
-    Hay, DungLenh,
-    // Logic
-    SuyRa, TuongDuong,
+    Gi, Dau, Nao, HayKhong, DaChua,
     // Ký hiệu
-    DauCham, DauHoi, DauPhay, DauThan,
+    DauCham, DauHoi, DauThan, DauPhay,
     DauNgoacTronMo, DauNgoacTronDong,
     DauNgoacVuongMo, DauNgoacVuongDong,
     Gan, Cong, Tru, Nhan, Chia,

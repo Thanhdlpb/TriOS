@@ -63,14 +63,15 @@ impl Parser {
         self.skip_dot();
         let tok = self.peek().ok_or("Kết thúc file")?;
         match &tok.kind {
+            TokenKind::DungModule => self.parse_use_module(), // <<< THÊM "dùng"
             TokenKind::ChuongTrinh => self.parse_chuong_trinh().map(|(name, body)| Statement::ChuongTrinh { name, body }),
             TokenKind::In => self.parse_print(),
-            TokenKind::Ten(ref s) if s == "in_ra" => self.parse_print(),
             TokenKind::Hay | TokenKind::DungLenh => self.parse_command(),
             TokenKind::Neu => self.parse_if_or_rule(),
             TokenKind::Lap => self.parse_for(),
             TokenKind::Ham => self.parse_function(),
             TokenKind::Hoi | TokenKind::CoPhai => self.parse_query(),
+            TokenKind::Ten(ref s) if s == "in_ra" => self.parse_print(),
             TokenKind::Ten(_) => {
                 if let Some(next) = self.peek_next() {
                     if next.kind == TokenKind::Gan {
@@ -81,6 +82,17 @@ impl Parser {
             }
             _ => Err(format!("Token không mong đợi: {:?}", tok)),
         }
+    }
+
+    fn parse_use_module(&mut self) -> Result<Statement, String> {
+        self.advance(); // dùng
+        let path = if let Some(Token { kind: TokenKind::Chuoi(s), .. }) = self.advance() {
+            s
+        } else {
+            return Err("Mong đợi đường dẫn module dạng chuỗi".to_string());
+        };
+        self.skip_dot();
+        Ok(Statement::UseModule { path })
     }
 
     fn parse_chuong_trinh(&mut self) -> Result<(String, Vec<Statement>), String> {
@@ -101,6 +113,7 @@ impl Parser {
         Ok((name, body))
     }
 
+    // ... (giữ nguyên các hàm parse còn lại)
     fn parse_fact(&mut self) -> Result<Statement, String> {
         let mut negation = false;
         let mut tense = None;
