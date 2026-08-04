@@ -1,6 +1,6 @@
 use crate::ast::*;
-use std::collections::{HashMap, HashSet};
 use serde_json;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
 pub struct Interpreter {
@@ -13,85 +13,134 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self { variables: HashMap::new(), string_vars: HashMap::new(), facts: Vec::new(), rules: Vec::new(), output: Vec::new() }
+        Self {
+            variables: HashMap::new(),
+            string_vars: HashMap::new(),
+            facts: Vec::new(),
+            rules: Vec::new(),
+            output: Vec::new(),
+        }
     }
 
     pub fn run(&mut self, stmts: &[Statement]) -> Vec<String> {
         self.output.clear();
-        for stmt in stmts { self.execute(stmt); }
+        for stmt in stmts {
+            self.execute(stmt);
+        }
         self.output.clone()
     }
 
     fn execute(&mut self, stmt: &Statement) {
         match stmt {
-            Statement::Fact { subject, predicate, object, .. } => {
-                self.facts.push((subject.clone(), predicate.clone(), object.clone()));
+            Statement::Fact {
+                subject,
+                predicate,
+                object,
+                ..
+            } => {
+                self.facts
+                    .push((subject.clone(), predicate.clone(), object.clone()));
             }
-            Statement::Rule { condition, conclusion, relation } => {
-                self.rules.push((condition.clone(), conclusion.clone(), relation.clone()));
+            Statement::Rule {
+                condition,
+                conclusion,
+                relation,
+            } => {
+                self.rules
+                    .push((condition.clone(), conclusion.clone(), relation.clone()));
             }
-            Statement::Query { subject, predicate, object, .. } => {
+            Statement::Query {
+                subject,
+                predicate,
+                object,
+                ..
+            } => {
                 let mut results = self.query(subject, predicate, object);
                 results.sort();
                 results.dedup();
                 if results.is_empty() {
                     self.output.push("Không tìm thấy.".to_string());
                 } else {
-                    for r in results { self.output.push(r); }
+                    for r in results {
+                        self.output.push(r);
+                    }
                 }
             }
             Statement::Print(expr) => {
                 let val = self.eval_to_string(expr);
                 self.output.push(val);
             }
-            Statement::Assign { name, value } => {
-                match value {
-                    Expression::String(s) => { self.string_vars.insert(name.clone(), s.clone()); }
-                    _ => { self.variables.insert(name.clone(), self.eval(value)); }
+            Statement::Assign { name, value } => match value {
+                Expression::String(s) => {
+                    self.string_vars.insert(name.clone(), s.clone());
                 }
-            }
-            Statement::IfElse { condition, then_body, else_body } => {
+                _ => {
+                    self.variables.insert(name.clone(), self.eval(value));
+                }
+            },
+            Statement::IfElse {
+                condition,
+                then_body,
+                else_body,
+            } => {
                 if self.eval(condition) != 0.0 {
-                    for s in then_body { self.execute(s); }
+                    for s in then_body {
+                        self.execute(s);
+                    }
                 } else if let Some(else_stmts) = else_body {
-                    for s in else_stmts { self.execute(s); }
+                    for s in else_stmts {
+                        self.execute(s);
+                    }
                 }
             }
-            Statement::ForLoop { var, start, end, body } => {
+            Statement::ForLoop {
+                var,
+                start,
+                end,
+                body,
+            } => {
                 let s = self.eval(start) as i64;
                 let e = self.eval(end) as i64;
                 for i in s..=e {
                     self.variables.insert(var.clone(), i as f64);
-                    for stmt in body { self.execute(stmt); }
+                    for stmt in body {
+                        self.execute(stmt);
+                    }
                 }
             }
             Statement::ChuongTrinh { body, .. } => {
-                for s in body { self.execute(s); }
-            }
-            Statement::UseModule { path } => {
-                match fs::read_to_string(path) {
-                    Ok(source) => {
-                        use crate::lexer::Lexer;
-                        use crate::parser::Parser;
-                        let mut lexer = Lexer::new(&source);
-                        let mut tokens = Vec::new();
-                        loop {
-                            let token = lexer.next_token();
-                            let is_eof = token.kind == crate::token::TokenKind::EOF;
-                            tokens.push(token);
-                            if is_eof { break; }
-                        }
-                        let mut parser = Parser::new(tokens);
-                        match parser.parse() {
-                            Ok(module_stmts) => {
-                                for s in module_stmts { self.execute(&s); }
-                            }
-                            Err(e) => self.output.push(format!("Lỗi module '{}': {}", path, e)),
-                        }
-                    }
-                    Err(e) => self.output.push(format!("Không thể đọc module '{}': {}", path, e)),
+                for s in body {
+                    self.execute(s);
                 }
             }
+            Statement::UseModule { path } => match fs::read_to_string(path) {
+                Ok(source) => {
+                    use crate::lexer::Lexer;
+                    use crate::parser::Parser;
+                    let mut lexer = Lexer::new(&source);
+                    let mut tokens = Vec::new();
+                    loop {
+                        let token = lexer.next_token();
+                        let is_eof = token.kind == crate::token::TokenKind::EOF;
+                        tokens.push(token);
+                        if is_eof {
+                            break;
+                        }
+                    }
+                    let mut parser = Parser::new(tokens);
+                    match parser.parse() {
+                        Ok(module_stmts) => {
+                            for s in module_stmts {
+                                self.execute(&s);
+                            }
+                        }
+                        Err(e) => self.output.push(format!("Lỗi module '{}': {}", path, e)),
+                    }
+                }
+                Err(e) => self
+                    .output
+                    .push(format!("Không thể đọc module '{}': {}", path, e)),
+            },
             _ => {}
         }
     }
@@ -101,20 +150,31 @@ impl Interpreter {
         let mut inferred = HashSet::new();
 
         for (s, p, o) in &self.facts {
-            if self.match_term(subject, s) && self.match_term(predicate, p) && self.match_term(object, o) {
+            if self.match_term(subject, s)
+                && self.match_term(predicate, p)
+                && self.match_term(object, o)
+            {
                 results.push(format!("{} {} {}", s, p, o));
             }
         }
 
         for (conditions, conclusion, _) in &self.rules {
-            if let Condition::Simple { subject: concl_s, predicate: concl_p, object: concl_o } = conclusion {
+            if let Condition::Simple {
+                subject: concl_s,
+                predicate: concl_p,
+                object: concl_o,
+            } = conclusion
+            {
                 let bindings = self.find_bindings(conditions);
                 for binding in bindings {
                     let inferred_s = self.apply_binding(concl_s, &binding);
                     let inferred_p = self.apply_binding(concl_p, &binding);
                     let inferred_o = self.apply_binding(concl_o, &binding);
 
-                    if self.match_term(subject, &inferred_s) && self.match_term(predicate, &inferred_p) && self.match_term(object, &inferred_o) {
+                    if self.match_term(subject, &inferred_s)
+                        && self.match_term(predicate, &inferred_p)
+                        && self.match_term(object, &inferred_o)
+                    {
                         let result = format!("{} {} {}", inferred_s, inferred_p, inferred_o);
                         if !inferred.contains(&result) {
                             inferred.insert(result.clone());
@@ -178,12 +238,18 @@ impl Interpreter {
         for condition in conditions {
             let mut new_bindings = Vec::new();
             match condition {
-                Condition::Simple { subject, predicate, object } => {
+                Condition::Simple {
+                    subject,
+                    predicate,
+                    object,
+                } => {
                     for (s, p, o) in &self.facts {
                         if p == predicate {
                             for existing in &all_bindings {
                                 let mut binding = existing.clone();
-                                if self.unify(subject, s, &mut binding) && self.unify(object, o, &mut binding) {
+                                if self.unify(subject, s, &mut binding)
+                                    && self.unify(object, o, &mut binding)
+                                {
                                     new_bindings.push(binding);
                                 }
                             }
@@ -197,8 +263,17 @@ impl Interpreter {
         all_bindings
     }
 
-    fn unify(&self, var_or_value: &str, fact_value: &str, binding: &mut HashMap<String, String>) -> bool {
-        if var_or_value.chars().next().map_or(false, |c| c.is_uppercase()) {
+    fn unify(
+        &self,
+        var_or_value: &str,
+        fact_value: &str,
+        binding: &mut HashMap<String, String>,
+    ) -> bool {
+        if var_or_value
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_uppercase())
+        {
             if let Some(existing) = binding.get(var_or_value) {
                 existing == fact_value
             } else {
@@ -212,14 +287,19 @@ impl Interpreter {
 
     fn apply_binding(&self, term: &str, binding: &HashMap<String, String>) -> String {
         if term.chars().next().map_or(false, |c| c.is_uppercase()) {
-            binding.get(term).cloned().unwrap_or_else(|| term.to_string())
+            binding
+                .get(term)
+                .cloned()
+                .unwrap_or_else(|| term.to_string())
         } else {
             term.to_string()
         }
     }
 
     fn match_term(&self, pattern: &str, value: &str) -> bool {
-        pattern == "?" || pattern == value || (pattern.chars().next().map_or(false, |c| c.is_uppercase()))
+        pattern == "?"
+            || pattern == value
+            || (pattern.chars().next().map_or(false, |c| c.is_uppercase()))
     }
 
     fn eval(&self, expr: &Expression) -> f64 {
@@ -230,10 +310,35 @@ impl Interpreter {
             Expression::Add(a, b) => self.eval(a) + self.eval(b),
             Expression::Sub(a, b) => self.eval(a) - self.eval(b),
             Expression::Mul(a, b) => self.eval(a) * self.eval(b),
-            Expression::Div(a, b) => self.eval(a) / if self.eval(b) == 0.0 { 1.0 } else { self.eval(b) },
-            Expression::Gt(a, b) => if self.eval(a) > self.eval(b) { 1.0 } else { 0.0 },
-            Expression::Lt(a, b) => if self.eval(a) < self.eval(b) { 1.0 } else { 0.0 },
-            Expression::Eq(a, b) => if (self.eval(a) - self.eval(b)).abs() < 0.001 { 1.0 } else { 0.0 },
+            Expression::Div(a, b) => {
+                self.eval(a)
+                    / if self.eval(b) == 0.0 {
+                        1.0
+                    } else {
+                        self.eval(b)
+                    }
+            }
+            Expression::Gt(a, b) => {
+                if self.eval(a) > self.eval(b) {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            Expression::Lt(a, b) => {
+                if self.eval(a) < self.eval(b) {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            Expression::Eq(a, b) => {
+                if (self.eval(a) - self.eval(b)).abs() < 0.001 {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
         }
     }
 
@@ -241,9 +346,15 @@ impl Interpreter {
         match expr {
             Expression::String(s) => s.clone(),
             Expression::Variable(name) => {
-                if let Some(s) = self.string_vars.get(name) { return s.clone(); }
+                if let Some(s) = self.string_vars.get(name) {
+                    return s.clone();
+                }
                 if let Some(v) = self.variables.get(name) {
-                    return if *v == (*v as i64) as f64 { format!("{}", *v as i64) } else { format!("{}", v) };
+                    return if *v == (*v as i64) as f64 {
+                        format!("{}", *v as i64)
+                    } else {
+                        format!("{}", v)
+                    };
                 }
                 "0".to_string()
             }
@@ -254,7 +365,11 @@ impl Interpreter {
             }
             _ => {
                 let v = self.eval(expr);
-                if v == (v as i64) as f64 { format!("{}", v as i64) } else { format!("{}", v) }
+                if v == (v as i64) as f64 {
+                    format!("{}", v as i64)
+                } else {
+                    format!("{}", v)
+                }
             }
         }
     }

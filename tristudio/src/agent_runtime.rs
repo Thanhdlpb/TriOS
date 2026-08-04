@@ -1,9 +1,9 @@
+use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::Mutex;
+use tricore::interpreter::Interpreter;
 use tricore::lexer::Lexer;
 use tricore::parser::Parser;
-use tricore::interpreter::Interpreter;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AgentInfo {
@@ -20,21 +20,30 @@ pub struct AgentRuntime {
 impl AgentRuntime {
     pub fn new() -> Self {
         let mut agents = HashMap::new();
-        agents.insert("shell".to_string(), AgentInfo {
-            name: "shell".to_string(),
-            status: "ready".to_string(),
-            last_output: String::new(),
-        });
-        agents.insert("web".to_string(), AgentInfo {
-            name: "web".to_string(),
-            status: "ready".to_string(),
-            last_output: String::new(),
-        });
-        agents.insert("ai".to_string(), AgentInfo {
-            name: "ai".to_string(),
-            status: "ready".to_string(),
-            last_output: String::new(),
-        });
+        agents.insert(
+            "shell".to_string(),
+            AgentInfo {
+                name: "shell".to_string(),
+                status: "ready".to_string(),
+                last_output: String::new(),
+            },
+        );
+        agents.insert(
+            "web".to_string(),
+            AgentInfo {
+                name: "web".to_string(),
+                status: "ready".to_string(),
+                last_output: String::new(),
+            },
+        );
+        agents.insert(
+            "ai".to_string(),
+            AgentInfo {
+                name: "ai".to_string(),
+                status: "ready".to_string(),
+                last_output: String::new(),
+            },
+        );
         Self {
             agents,
             interpreter: Interpreter::new(),
@@ -68,7 +77,9 @@ impl AgentRuntime {
                     let token = lexer.next_token();
                     let is_eof = token.kind == tricore::token::TokenKind::EOF;
                     tokens.push(token);
-                    if is_eof { break; }
+                    if is_eof {
+                        break;
+                    }
                 }
                 let mut parser = Parser::new(tokens);
                 match parser.parse() {

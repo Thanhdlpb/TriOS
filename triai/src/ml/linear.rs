@@ -11,7 +11,11 @@ impl LinearRegression {
     pub fn new(n_features: usize, learning_rate: f64) -> Self {
         let mut rng = rand::thread_rng();
         let weights = Array1::from_vec((0..n_features).map(|_| rng.gen_range(-1.0..1.0)).collect());
-        Self { weights, bias: rng.gen_range(-1.0..1.0), learning_rate }
+        Self {
+            weights,
+            bias: rng.gen_range(-1.0..1.0),
+            learning_rate,
+        }
     }
 
     pub fn predict(&self, x: &Array2<f64>) -> Array1<f64> {

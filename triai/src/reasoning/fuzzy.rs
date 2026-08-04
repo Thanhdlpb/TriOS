@@ -7,7 +7,10 @@ pub struct FuzzySystem {
 
 impl FuzzySystem {
     pub fn new() -> Self {
-        Self { sets: HashMap::new(), rules: Vec::new() }
+        Self {
+            sets: HashMap::new(),
+            rules: Vec::new(),
+        }
     }
 
     pub fn add_set(&mut self, name: &str, membership: fn(f64) -> f64) {

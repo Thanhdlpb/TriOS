@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
 use std::fs;
-use std::path::Path;
 use std::io::{self, Write};
+use std::path::Path;
+use tricore::hoc_tap;
+use tricore::interpreter::Interpreter;
 use tricore::lexer::Lexer;
 use tricore::parser::Parser as TriParser;
-use tricore::interpreter::Interpreter;
-use tricore::hoc_tap;
 
 #[derive(Parser)]
 #[command(name = "tri")]
@@ -64,14 +64,18 @@ fn chay_file(filename: &str) {
         let token = lexer.next_token();
         let is_eof = token.kind == tricore::token::TokenKind::EOF;
         tokens.push(token);
-        if is_eof { break; }
+        if is_eof {
+            break;
+        }
     }
     let mut parser = TriParser::new(tokens);
     match parser.parse() {
         Ok(statements) => {
             let mut interpreter = Interpreter::new();
             let output = interpreter.run(&statements);
-            for line in output { println!("{}", line); }
+            for line in output {
+                println!("{}", line);
+            }
         }
         Err(e) => eprintln!("Lỗi: {}", e),
     }
@@ -97,7 +101,9 @@ fn xu_ly_ai(interpreter: &mut Interpreter, input: &str) {
 
 fn xu_ly_cau_lenh(interpreter: &mut Interpreter, input: &str) {
     let trimmed = input.trim();
-    if trimmed.is_empty() { return; }
+    if trimmed.is_empty() {
+        return;
+    }
 
     if let Some(ai_input) = trimmed.strip_prefix("ai ") {
         xu_ly_ai(interpreter, ai_input);
@@ -138,13 +144,17 @@ fn xu_ly_cau_lenh(interpreter: &mut Interpreter, input: &str) {
         let token = lexer.next_token();
         let is_eof = token.kind == tricore::token::TokenKind::EOF;
         tokens.push(token);
-        if is_eof { break; }
+        if is_eof {
+            break;
+        }
     }
     let mut parser = TriParser::new(tokens);
     match parser.parse() {
         Ok(statements) => {
             let output = interpreter.run(&statements);
-            for line in output { println!("{}", line); }
+            for line in output {
+                println!("{}", line);
+            }
         }
         Err(e) => eprintln!("❌ Lỗi: {}", e),
     }
@@ -159,9 +169,13 @@ fn repl() {
         print!("tri> ");
         io::stdout().flush().unwrap();
         input_buffer.clear();
-        if io::stdin().read_line(&mut input_buffer).is_err() { break; }
+        if io::stdin().read_line(&mut input_buffer).is_err() {
+            break;
+        }
         let trimmed = input_buffer.trim();
-        if trimmed == "thoát" || trimmed == "exit" || trimmed == "quit" { break; }
+        if trimmed == "thoát" || trimmed == "exit" || trimmed == "quit" {
+            break;
+        }
         xu_ly_cau_lenh(&mut interpreter, trimmed);
     }
     println!("Đã thoát REPL.");
@@ -170,17 +184,24 @@ fn repl() {
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Tao { ung_dung, thu_vien, plugin } => {
-            if let Some(name) = ung_dung { tao_ung_dung(&name); }
-            else if let Some(name) = thu_vien { println!("✅ Đã tạo thư viện '{}'", name); }
-            else if let Some(name) = plugin { println!("✅ Đã tạo plugin '{}'", name); }
-            else { println!("Dùng: tri tao --ung-dung <tên>"); }
-        }
-        Commands::Chay { file } => {
-            match file {
-                Some(filename) => chay_file(&filename),
-                None => repl(),
+        Commands::Tao {
+            ung_dung,
+            thu_vien,
+            plugin,
+        } => {
+            if let Some(name) = ung_dung {
+                tao_ung_dung(&name);
+            } else if let Some(name) = thu_vien {
+                println!("✅ Đã tạo thư viện '{}'", name);
+            } else if let Some(name) = plugin {
+                println!("✅ Đã tạo plugin '{}'", name);
+            } else {
+                println!("Dùng: tri tao --ung-dung <tên>");
             }
         }
+        Commands::Chay { file } => match file {
+            Some(filename) => chay_file(&filename),
+            None => repl(),
+        },
     }
 }

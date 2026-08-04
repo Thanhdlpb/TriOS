@@ -13,13 +13,16 @@ impl BytecodeProgram {
         let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
         serde_json::from_str(&content).map_err(|e| e.to_string())
     }
-    
+
     pub fn verify(&self) -> Result<(), String> {
         for (i, inst) in self.instructions.iter().enumerate() {
             match inst {
                 OpCode::Jmp(addr) | OpCode::Jz(addr) | OpCode::Jnz(addr) => {
                     if *addr >= self.instructions.len() {
-                        return Err(format!("Địa chỉ {} không hợp lệ tại instruction {}", addr, i));
+                        return Err(format!(
+                            "Địa chỉ {} không hợp lệ tại instruction {}",
+                            addr, i
+                        ));
                     }
                 }
                 _ => {}

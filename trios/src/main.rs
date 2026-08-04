@@ -11,7 +11,9 @@ fn main() {
         print!("trios> ");
         io::stdout().flush().unwrap();
         let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() { break; }
+        if io::stdin().read_line(&mut input).is_err() {
+            break;
+        }
         let cmd = input.trim();
 
         match cmd {

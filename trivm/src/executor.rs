@@ -20,20 +20,20 @@ impl VM {
             output: Vec::new(),
         }
     }
-    
+
     pub fn run(&mut self, program: &BytecodeProgram) -> Result<Vec<String>, String> {
         self.pc = program.entry_point;
         self.running = true;
         self.output.clear();
-        
+
         while self.running && self.pc < program.instructions.len() {
             let inst = program.instructions[self.pc].clone();
             self.execute(&inst)?;
         }
-        
+
         Ok(self.output.clone())
     }
-    
+
     fn execute(&mut self, inst: &OpCode) -> Result<(), String> {
         match inst {
             OpCode::Push(val) => {
@@ -137,7 +137,8 @@ impl VM {
                 self.pc += 1;
             }
             OpCode::QueryFact(sub, pred, obj) => {
-                self.output.push(format!("Query: {} {} {} ?", sub, pred, obj));
+                self.output
+                    .push(format!("Query: {} {} {} ?", sub, pred, obj));
                 self.pc += 1;
             }
             OpCode::Halt => {
@@ -149,7 +150,7 @@ impl VM {
         }
         Ok(())
     }
-    
+
     fn binary_op<F>(&mut self, op: F)
     where
         F: Fn(f64, f64) -> f64,
@@ -159,7 +160,7 @@ impl VM {
         self.stack.push(op(a, b));
         self.pc += 1;
     }
-    
+
     fn compare_op<F>(&mut self, op: F)
     where
         F: Fn(f64, f64) -> bool,
@@ -169,7 +170,7 @@ impl VM {
         self.stack.push(if op(a, b) { 1.0 } else { 0.0 });
         self.pc += 1;
     }
-    
+
     fn logic_op<F>(&mut self, op: F)
     where
         F: Fn(f64, f64) -> bool,

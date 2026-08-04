@@ -9,33 +9,52 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(source: &str) -> Self {
-        Self { chars: source.chars().collect(), pos: 0, line: 1, col: 1 }
+        Self {
+            chars: source.chars().collect(),
+            pos: 0,
+            line: 1,
+            col: 1,
+        }
     }
 
-    fn peek(&self) -> Option<char> { self.chars.get(self.pos).copied() }
+    fn peek(&self) -> Option<char> {
+        self.chars.get(self.pos).copied()
+    }
 
     fn advance(&mut self) -> Option<char> {
         let c = self.chars.get(self.pos).copied();
         if let Some(ch) = c {
             self.pos += 1;
-            if ch == '\n' { self.line += 1; self.col = 1; }
-            else { self.col += 1; }
+            if ch == '\n' {
+                self.line += 1;
+                self.col = 1;
+            } else {
+                self.col += 1;
+            }
         }
         c
     }
 
     fn skip_whitespace(&mut self) {
         while let Some(c) = self.peek() {
-            if c.is_whitespace() { self.advance(); }
-            else { break; }
+            if c.is_whitespace() {
+                self.advance();
+            } else {
+                break;
+            }
         }
     }
 
     fn read_identifier(&mut self, first: char) -> String {
-        let mut s = String::new(); s.push(first);
+        let mut s = String::new();
+        s.push(first);
         while let Some(c) = self.peek() {
-            if c.is_alphanumeric() || c == '_' { s.push(c); self.advance(); }
-            else { break; }
+            if c.is_alphanumeric() || c == '_' {
+                s.push(c);
+                self.advance();
+            } else {
+                break;
+            }
         }
         s
     }
@@ -43,7 +62,10 @@ impl Lexer {
     fn read_string(&mut self) -> String {
         let mut s = String::new();
         while let Some(c) = self.peek() {
-            if c == '"' { self.advance(); break; }
+            if c == '"' {
+                self.advance();
+                break;
+            }
             s.push(c);
             self.advance();
         }
@@ -51,15 +73,26 @@ impl Lexer {
     }
 
     fn read_number(&mut self, first: char) -> TokenKind {
-        let mut s = String::new(); s.push(first);
+        let mut s = String::new();
+        s.push(first);
         let mut is_float = false;
         while let Some(c) = self.peek() {
-            if c.is_digit(10) { s.push(c); self.advance(); }
-            else if c == '.' { is_float = true; s.push(c); self.advance(); }
-            else { break; }
+            if c.is_digit(10) {
+                s.push(c);
+                self.advance();
+            } else if c == '.' {
+                is_float = true;
+                s.push(c);
+                self.advance();
+            } else {
+                break;
+            }
         }
-        if is_float { TokenKind::SoThuc(s.parse().unwrap_or(0.0)) }
-        else { TokenKind::SoNguyen(s.parse().unwrap_or(0)) }
+        if is_float {
+            TokenKind::SoThuc(s.parse().unwrap_or(0.0))
+        } else {
+            TokenKind::SoNguyen(s.parse().unwrap_or(0))
+        }
     }
 
     pub fn next_token(&mut self) -> Token {

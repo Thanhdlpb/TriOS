@@ -1,9 +1,9 @@
 mod bytecode;
-mod loader;
 mod executor;
+mod loader;
 
-use loader::BytecodeProgram;
 use executor::VM;
+use loader::BytecodeProgram;
 use std::env;
 
 fn main() {
@@ -13,7 +13,7 @@ fn main() {
         println!("Sử dụng: trivm <file.tbc>");
         return;
     }
-    
+
     let filename = &args[1];
     match BytecodeProgram::from_file(filename) {
         Ok(program) => {

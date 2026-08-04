@@ -1,8 +1,8 @@
-use std::fs;
 use std::env;
+use std::fs;
+use tricore::interpreter::Interpreter;
 use tricore::lexer::Lexer;
 use tricore::parser::Parser;
-use tricore::interpreter::Interpreter;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -17,14 +17,18 @@ fn main() {
         let token = lexer.next_token();
         let is_eof = token.kind == tricore::token::TokenKind::EOF;
         tokens.push(token);
-        if is_eof { break; }
+        if is_eof {
+            break;
+        }
     }
     let mut parser = Parser::new(tokens);
     match parser.parse() {
         Ok(stmts) => {
             let mut interpreter = Interpreter::new();
             let output = interpreter.run(&stmts);
-            for line in output { println!("{}", line); }
+            for line in output {
+                println!("{}", line);
+            }
         }
         Err(e) => eprintln!("Lỗi: {}", e),
     }

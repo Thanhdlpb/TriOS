@@ -1,0 +1,6 @@
+name = "usb"
+version = "1.0.0"
+description = "USB compatibility patch for Android/PRoot"
+ha_min = "2025.1.0"
+ha_max = "2025.12.99"
+author = "TriOS"

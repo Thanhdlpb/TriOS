@@ -1,10 +1,11 @@
-use std::fs;
+use crate::interpreter::Interpreter;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
-use crate::interpreter::Interpreter;
+use std::fs;
 
 pub fn hoc_tu_tep(interpreter: &mut Interpreter, filename: &str) -> Result<usize, String> {
-    let content = fs::read_to_string(filename).map_err(|e| format!("Không đọc được file: {}", e))?;
+    let content =
+        fs::read_to_string(filename).map_err(|e| format!("Không đọc được file: {}", e))?;
     let sentences: Vec<&str> = content
         .split(|c| c == '.' || c == '?' || c == '!')
         .map(|s| s.trim())
@@ -20,7 +21,9 @@ pub fn hoc_tu_tep(interpreter: &mut Interpreter, filename: &str) -> Result<usize
             let token = lexer.next_token();
             let is_eof = token.kind == crate::token::TokenKind::EOF;
             tokens.push(token);
-            if is_eof { break; }
+            if is_eof {
+                break;
+            }
         }
         let mut parser = Parser::new(tokens);
         if let Ok(statements) = parser.parse() {
